@@ -23,11 +23,13 @@ pub(crate) struct LexOne {
     pub(crate) node: Option<Node>,
 }
 
-pub(crate) fn lex_one(s: &[u8]) -> Option<LexOne> {
+pub(crate) fn lex_one(s: &[u8]) -> LexOne {
     let mut cursor = 0;
+    let mut marker = 0;
 /*!re2c
-    [ \t\r\n]+ { return Some(LexOne { consume: cursor, node: None }); }
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* { return Some(LexOne { consume: cursor, node: Some(Node::Symbol(str::from_utf8(&s[..cursor]).unwrap().to_string())) }); }
-    * { return None; }
+    ";" [^\r\n]* { return LexOne { consume: cursor, node: None }; }
+    [ \t\r\n]+ { return LexOne { consume: cursor, node: None }; }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* { return LexOne { consume: cursor, node: Some(Node::Symbol(str::from_utf8(&s[..cursor]).unwrap().to_string())) }; }
+    * { return LexOne { consume: 0, node: None }; }
 */
 }

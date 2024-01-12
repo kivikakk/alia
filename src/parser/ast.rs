@@ -30,7 +30,6 @@ impl Debug for Node {
     }
 }
 
-#[derive(Debug)]
 pub(crate) enum ParseNodeError {
     Empty,
     Unexpected(char),
@@ -47,24 +46,29 @@ impl Display for ParseNodeError {
     }
 }
 
+impl Debug for ParseNodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
 pub(crate) fn lex(s: &str) -> Result<Node, ParseNodeError> {
     let s = s.as_bytes();
     let mut offset = 0;
     let mut result: Option<Node> = None;
 
     while offset < s.len() {
-        match lexer::lex_one(&s[offset..]) {
-            Some(lexer::LexOne { consume, node }) => {
-                assert!(consume > 0);
-                offset += consume;
-                if let Some(node) = node {
-                    if result.is_some() {
-                        return Err(ParseNodeError::Multiple);
-                    }
-                    result = Some(node);
-                }
+        let lexer::LexOne { consume, node } = lexer::lex_one(&s[offset..]);
+        if consume == 0 {
+            return Err(ParseNodeError::Unexpected(s[offset] as char));
+        }
+
+        offset += consume;
+        if let Some(node) = node {
+            if result.is_some() {
+                return Err(ParseNodeError::Multiple);
             }
-            None => return Err(ParseNodeError::Unexpected(s[offset] as char)),
+            result = Some(node);
         }
     }
 
