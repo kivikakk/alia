@@ -1,10 +1,10 @@
 use std::error::Error;
 
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response, ResponseError};
-use lsp_types::request::{CodeActionRequest, ExecuteCommand, GotoDefinition};
+use lsp_types::request::{CodeActionRequest, ExecuteCommand, GotoDefinition, HoverRequest};
 use lsp_types::{
-    CodeActionResponse, Command, ExecuteCommandOptions, GotoDefinitionResponse, InitializeParams,
-    OneOf, Range, ServerCapabilities,
+    CodeActionResponse, Command, ExecuteCommandOptions, GotoDefinitionResponse, Hover,
+    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Range, ServerCapabilities,
 };
 
 const COMMAND_START_VM: &str = "startVm";
@@ -25,6 +25,7 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
 
     let (connection, io_threads) = Connection::stdio();
     let server_capabilities = serde_json::to_value(&ServerCapabilities {
+        hover_provider: Some(true.into()),
         definition_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(true.into()),
         execute_command_provider: Some(ExecuteCommandOptions {
@@ -62,6 +63,33 @@ fn main_loop(
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
+                let req = match cast::<HoverRequest>(req) {
+                    Ok((id, params)) => {
+                        eprintln!("wah {:?}", params.text_document_position_params);
+                        let result = Some(Hover {
+                            contents: HoverContents::Markup(MarkupContent {
+                                kind: MarkupKind::Markdown,
+                                value: [
+                                    "# Header",
+                                    "Some text",
+                                    "```typescript",
+                                    "someCode();",
+                                    "```",
+                                ]
+                                .join("\n"),
+                            }),
+                            range: None,
+                        });
+                        connection.sender.send(Message::Response(Response {
+                            id,
+                            result: Some(serde_json::to_value(&result).unwrap()),
+                            error: None,
+                        }))?;
+                        continue;
+                    }
+                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
+                    Err(ExtractError::MethodMismatch(req)) => req,
+                };
                 let req = match cast::<GotoDefinition>(req) {
                     Ok((id, _params)) => {
                         let result = Some(GotoDefinitionResponse::Array(Vec::new()));
