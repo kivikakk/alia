@@ -1,11 +1,16 @@
 use std::error::Error;
+use std::fmt::Write;
 
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response, ResponseError};
+use lsp_textdocument::TextDocuments;
 use lsp_types::request::{CodeActionRequest, ExecuteCommand, GotoDefinition, HoverRequest};
 use lsp_types::{
     CodeActionResponse, Command, ExecuteCommandOptions, GotoDefinitionResponse, Hover,
-    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Range, ServerCapabilities,
+    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Position, Range,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
+
+use crate::parser::Document;
 
 const COMMAND_START_VM: &str = "startVm";
 const COMMAND_START_VM_FRIENDLY: &str = "Start alia VM";
@@ -24,8 +29,13 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
     }
 
     let (connection, io_threads) = Connection::stdio();
+    let mut documents = TextDocuments::new();
     let server_capabilities = serde_json::to_value(&ServerCapabilities {
         hover_provider: Some(true.into()),
+        text_document_sync: Some(TextDocumentSyncCapability::Kind(
+            TextDocumentSyncKind::INCREMENTAL,
+        )),
+        document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(true.into()),
         execute_command_provider: Some(ExecuteCommandOptions {
@@ -44,7 +54,7 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
             return Err(e.into());
         }
     };
-    main_loop(connection, initialization_params)?;
+    main_loop(connection, initialization_params, &mut documents)?;
     io_threads.join()?;
 
     Ok(())
@@ -53,6 +63,7 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
 fn main_loop(
     connection: Connection,
     params: serde_json::Value,
+    documents: &mut TextDocuments,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     let mut vm_running = false;
 
@@ -65,26 +76,40 @@ fn main_loop(
                 }
                 let req = match cast::<HoverRequest>(req) {
                     Ok((id, params)) => {
-                        eprintln!("wah {:?}", params.text_document_position_params);
-                        let result = Some(Hover {
-                            contents: HoverContents::Markup(MarkupContent {
-                                kind: MarkupKind::Markdown,
-                                value: [
-                                    "# Header",
-                                    "Some text",
-                                    "```typescript",
-                                    "someCode();",
-                                    "```",
-                                ]
-                                .join("\n"),
-                            }),
-                            range: None,
-                        });
-                        connection.sender.send(Message::Response(Response {
-                            id,
-                            result: Some(serde_json::to_value(&result).unwrap()),
-                            error: None,
-                        }))?;
+                        let pos = params.text_document_position_params.position;
+                        let uri = &params.text_document_position_params.text_document.uri;
+                        let content = documents.get_document_content(uri, None).unwrap();
+                        if let Ok(doc) = content.parse::<Document>() {
+                            let mut value = String::new();
+                            writeln!(value, "# {}", "thing")?;
+                            writeln!(value, "Some text")?;
+                            writeln!(value, "```lisp")?;
+                            writeln!(value, "(um yea ['hi])")?;
+                            writeln!(value, "{}", doc)?;
+                            writeln!(value, "```")?;
+
+                            let result = Some(Hover {
+                                contents: HoverContents::Markup(MarkupContent {
+                                    kind: MarkupKind::Markdown,
+                                    value,
+                                }),
+                                range: Some(Range::new(
+                                    pos,
+                                    Position::new(pos.line, pos.character + 3),
+                                )), // XXX
+                            });
+                            connection.sender.send(Message::Response(Response {
+                                id,
+                                result: Some(serde_json::to_value(&result).unwrap()),
+                                error: None,
+                            }))?;
+                        } else {
+                            connection.sender.send(Message::Response(Response {
+                                id,
+                                result: Some(serde_json::to_value(&None::<Hover>).unwrap()),
+                                error: None,
+                            }))?;
+                        }
                         continue;
                     }
                     Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
@@ -185,7 +210,9 @@ fn main_loop(
                 eprintln!("got response: {resp:?}");
             }
             Message::Notification(not) => {
-                eprintln!("got notification: {not:?}");
+                if !documents.listen(not.method.as_str(), &not.params) {
+                    eprintln!("got notification: {not:?}");
+                }
             }
         }
     }

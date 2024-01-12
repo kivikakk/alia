@@ -14,6 +14,8 @@
     re2c:indent:top          = 1;
 */
 
+use super::Loc;
+
 pub(crate) enum TokenKind {
     Whitespace,
     Symbol,
@@ -30,17 +32,17 @@ pub(crate) enum TokenKind {
 pub(crate) struct Token<'a> {
     pub(crate) kind: TokenKind,
     pub(crate) excerpt: &'a [u8],
-    pub(crate) start: (usize, usize),
-    pub(crate) end: (usize, usize),
+    pub(crate) start: Loc,
+    pub(crate) end: Loc,
 }
 
-fn token(kind: TokenKind, s: &[u8], n: usize, mut loc: (usize, usize)) -> Token {
+fn token(kind: TokenKind, s: &[u8], n: usize, mut loc: Loc) -> Token {
     let start = loc;
     let excerpt = &s[..n];
     for c in excerpt {
         match c {
-            b'\n' => loc = (loc.0 + 1, 0),
-            _ => loc = (loc.0, loc.1 + 1),
+            b'\n' => loc = Loc(loc.0 + 1, 0),
+            _ => loc.1 += 1,
         }
     }
     Token {
@@ -51,15 +53,15 @@ fn token(kind: TokenKind, s: &[u8], n: usize, mut loc: (usize, usize)) -> Token 
     }
 }
 
-fn skip(s: &[u8], n: usize, loc: (usize, usize)) -> Token {
+fn skip(s: &[u8], n: usize, loc: Loc) -> Token {
     token(TokenKind::Whitespace, s, n, loc)
 }
 
 fn err(s: &[u8]) -> Token {
-    skip(s, 0, (0, 0))
+    skip(s, 0, Loc(0, 0))
 }
 
-pub(crate) fn lex_one(s: &[u8], loc: (usize, usize)) -> Token {
+pub(crate) fn lex_one(s: &[u8], loc: Loc) -> Token {
     let mut cursor = 0;
     let mut marker = 0;
     let len = s.len();

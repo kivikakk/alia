@@ -5,12 +5,13 @@ edition = "2021"
 
 [features]
 default = ["lsp", "repl"]
-lsp = ["dep:lsp-server", "dep:lsp-types", "dep:serde", "dep:serde_json"]
+lsp = ["dep:lsp-server", "dep:lsp-types", "dep:lsp-textdocument", "dep:serde", "dep:serde_json"]
 repl = ["dep:rustyline"]
 
 [dependencies]
 lsp-server = { version = "0.7", optional = true }
 lsp-types = { version = "0.95", optional = true }
+lsp-textdocument = { version = "0.3", optional = true }
 serde = { version = "1.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 rustyline = { version = "13", optional = true }

@@ -1,6 +1,8 @@
 use std::fmt::{Debug, Display};
 use std::str::{self, FromStr};
 
+use super::{ParseError, ParseErrorKind};
+
 #[derive(PartialEq)]
 pub(crate) enum NodeValue {
     Symbol(String),
@@ -10,10 +12,10 @@ pub(crate) enum NodeValue {
     Vec(Vec<Node>),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct Loc(pub(crate) usize, pub(crate) usize);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct Range(pub(crate) Loc, pub(crate) Loc);
 
 impl Display for Loc {
@@ -67,10 +69,21 @@ impl PartialEq for Node {
 }
 
 impl FromStr for Node {
-    type Err = super::ParseError;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        super::parse(s, (0, 0))
+        let mut doc = s.parse::<Document>()?;
+        match doc.toplevels.len() {
+            0 => Err(ParseError {
+                kind: ParseErrorKind::Empty,
+                range: doc.range,
+            }),
+            1 => Ok(doc.toplevels.pop().unwrap()),
+            _ => Err(ParseError {
+                kind: ParseErrorKind::Multiple,
+                range: doc.range,
+            }),
+        }
     }
 }
 
@@ -125,5 +138,61 @@ impl Debug for Node {
 impl Debug for NodeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(self, f)
+    }
+}
+
+pub(crate) struct Document {
+    toplevels: Vec<Node>,
+    range: Range,
+}
+
+impl Display for Document {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for toplevel in &self.toplevels {
+            if first {
+                first = false;
+            } else {
+                writeln!(f)?;
+            }
+            writeln!(f, "{toplevel}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for Document {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl FromStr for Document {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut toplevels = vec![];
+        let mut offset = 0;
+        let mut loc = Loc(0, 0);
+
+        loop {
+            match super::parse(s, offset, loc) {
+                Ok((node, new_offset, new_loc)) => {
+                    toplevels.push(node);
+                    offset = new_offset;
+                    loc = new_loc;
+                }
+                Err(ParseError {
+                    kind: ParseErrorKind::Empty,
+                    ..
+                }) => break,
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(Document {
+            toplevels,
+            range: ((0, 0).into(), loc).into(),
+        })
     }
 }

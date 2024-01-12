@@ -5,7 +5,7 @@ mod tests;
 use std::fmt::{Debug, Display};
 use std::str;
 
-pub(crate) use self::ast::Node;
+pub(crate) use self::ast::{Document, Node};
 use self::ast::{Loc, NodeValue, Range};
 use self::lexer::{lex_one, Token, TokenKind};
 
@@ -163,19 +163,23 @@ impl Parser {
         )
     }
 
-    fn finish<L: Into<Loc>>(self, loc: L) -> Result<Node, ParseError> {
+    fn finish<L: Into<Loc>>(self, offset: usize, loc: L) -> Result<(Node, usize, Loc), ParseError> {
         let loc = loc.into();
         if !self.stack.is_empty() {
             return Err(parse_error(ParseErrorKind::Unfinished, (loc, loc)));
         }
         self.result
             .ok_or_else(|| parse_error(ParseErrorKind::Empty, ((0, 0).into(), loc)))
+            .map(|n| (n, offset, loc))
     }
 }
 
-pub(crate) fn parse(s: &str, mut loc: (usize, usize)) -> Result<Node, ParseError> {
+pub(crate) fn parse(
+    s: &str,
+    mut offset: usize,
+    mut loc: Loc,
+) -> Result<(Node, usize, Loc), ParseError> {
     let s = s.as_bytes();
-    let mut offset = 0;
     let mut parser = Parser::new();
 
     while offset < s.len() {
@@ -228,7 +232,7 @@ pub(crate) fn parse(s: &str, mut loc: (usize, usize)) -> Result<Node, ParseError
         }
     }
 
-    parser.finish(loc)
+    parser.finish(offset, loc)
 }
 
 fn parse_symbol<R: Into<Range>>(a: &[u8], _range: R) -> Result<String, ParseError> {
