@@ -4,6 +4,10 @@
   [id:    (lia/opt lia/u64)
    login: lia/str])
 
+(lia/defrecord User
+  ['id    (lia/opt lia/u64)
+   'login lia/str])
+
 (lia/defnode [] ; root node
   "Hi! A node right now is just a page.")
 
