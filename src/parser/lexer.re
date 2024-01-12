@@ -16,14 +16,15 @@
 
 pub(crate) enum TokenKind {
     Whitespace,
-    Atom,
-    AtomColon,
+    Symbol,
+    SymbolColon,
     Number,
     String,
     ListStart,
     ListEnd,
     VecStart,
     VecEnd,
+    Quote,
 }
 
 pub(crate) struct Token<'a> {
@@ -53,8 +54,8 @@ pub(crate) fn lex_one(s: &[u8]) -> Token {
 
     [ \t\r\n]+ { return skip(s, cursor); }
 
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? ":" { return token(TokenKind::AtomColon, s, cursor); }
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? { return token(TokenKind::Atom, s, cursor); }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? ":" { return token(TokenKind::SymbolColon, s, cursor); }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? { return token(TokenKind::Symbol, s, cursor); }
 
     "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor); }
     [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor); }
@@ -66,6 +67,8 @@ pub(crate) fn lex_one(s: &[u8]) -> Token {
 
     "[" { return token(TokenKind::VecStart, s, cursor); }
     "]" { return token(TokenKind::VecEnd, s, cursor); }
+
+    "'" { return token(TokenKind::Quote, s, cursor); }
 
     * { return err(s); }
 
