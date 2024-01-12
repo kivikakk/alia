@@ -52,7 +52,7 @@ in {
         ];
         language-server.alia-lsp = {
           command = "alia";
-          args = ["--lsp"];
+          args = ["lsp"];
         };
       };
     })
