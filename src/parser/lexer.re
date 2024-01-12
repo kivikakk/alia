@@ -14,8 +14,6 @@
     re2c:indent:top          = 1;
 */
 
-use std::str;
-
 pub(crate) enum TokenKind {
     Whitespace,
     Symbol,
@@ -27,11 +25,11 @@ pub(crate) enum TokenKind {
 
 pub(crate) struct Token<'a> {
     pub(crate) kind: TokenKind,
-    pub(crate) excerpt: &'a str,
+    pub(crate) excerpt: &'a [u8],
 }
 
 fn token(kind: TokenKind, s: &[u8], n: usize) -> Token {
-    Token { kind, excerpt: &unsafe { str::from_utf8_unchecked(s) }[..n] }
+    Token { kind, excerpt: &s[..n] }
 }
 
 fn skip(s: &[u8], n: usize) -> Token {

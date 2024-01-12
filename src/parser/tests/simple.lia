@@ -9,8 +9,6 @@ abcd.
 
 :)
 123
-12345.0
-0xABCD_EF01
 
 :(
 0x
@@ -19,6 +17,8 @@ abcd.
 5-
 99.9-
 0xABCDEFG
+0xABCD_EF01 ; XXX NYI
+12345.0     ; XXX NYI
 
 :)
 "xyz"

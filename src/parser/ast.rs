@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use std::str::FromStr;
+use std::str::{self, FromStr};
 
 use super::lexer::{lex_one, Token, TokenKind};
 
@@ -15,7 +15,7 @@ impl FromStr for Node {
     type Err = ParseNodeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lex(s)
+        parse(s)
     }
 }
 
@@ -52,6 +52,8 @@ pub(crate) enum ParseNodeError {
     Empty,
     Unexpected(char),
     Multiple,
+    Number,
+    String,
     Other,
 }
 
@@ -61,6 +63,8 @@ impl Display for ParseNodeError {
             Self::Empty => f.write_str("input is empty"),
             Self::Unexpected(c) => write!(f, "unexpected {c:?}"),
             Self::Multiple => f.write_str("multiple forms found"),
+            Self::Number => f.write_str("number parse fail"),
+            Self::String => f.write_str("string parse fail"),
             Self::Other => f.write_str("other unsorted error"),
         }
     }
@@ -72,16 +76,70 @@ impl Debug for ParseNodeError {
     }
 }
 
-enum LexState {
+enum ParseStackEntry {
     Empty,
     Full(Node),
-    List(Vec<Node>, Box<LexState>),
+    List(Vec<Node>),
 }
 
-pub(crate) fn lex(s: &str) -> Result<Node, ParseNodeError> {
+struct ParseStack(Vec<ParseStackEntry>);
+
+impl ParseStack {
+    fn new() -> Self {
+        ParseStack(vec![ParseStackEntry::Empty])
+    }
+
+    fn fill(&mut self, node: Node) -> Result<(), ParseNodeError> {
+        let last = self.0.last_mut().unwrap();
+        match last {
+            ParseStackEntry::Empty => *last = ParseStackEntry::Full(node),
+            ParseStackEntry::Full(_) => return Err(ParseNodeError::Multiple),
+            ParseStackEntry::List(ref mut ns) => ns.push(node),
+        }
+        Ok(())
+    }
+
+    fn list_start(&mut self) -> Result<(), ParseNodeError> {
+        let last = self.0.last_mut().unwrap();
+        match last {
+            ParseStackEntry::Empty | ParseStackEntry::List(_) => {
+                self.0.push(ParseStackEntry::List(vec![]))
+            }
+            ParseStackEntry::Full(_) => return Err(ParseNodeError::Multiple),
+        }
+        Ok(())
+    }
+
+    fn list_end(&mut self) -> Result<(), ParseNodeError> {
+        match self.0.pop().ok_or(ParseNodeError::Other)? {
+            ParseStackEntry::List(ns) => {
+                self.0.pop().unwrap();
+                self.fill(Node::List(ns))?;
+            }
+            ParseStackEntry::Empty | ParseStackEntry::Full(_) => {
+                return Err(ParseNodeError::Unexpected(']'))
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(mut self) -> Result<Node, ParseNodeError> {
+        let first = self.0.pop().ok_or(ParseNodeError::Other)?;
+        if !self.0.is_empty() {
+            return Err(ParseNodeError::Other);
+        }
+        match first {
+            ParseStackEntry::Empty => Err(ParseNodeError::Empty),
+            ParseStackEntry::Full(n) => Ok(n),
+            _ => Err(ParseNodeError::Other),
+        }
+    }
+}
+
+pub(crate) fn parse(s: &str) -> Result<Node, ParseNodeError> {
     let s = s.as_bytes();
     let mut offset = 0;
-    let mut state = LexState::Empty;
+    let mut stack = ParseStack::new();
 
     while offset < s.len() {
         let Token { kind, excerpt } = lex_one(&s[offset..]);
@@ -92,40 +150,65 @@ pub(crate) fn lex(s: &str) -> Result<Node, ParseNodeError> {
 
         offset += consume;
 
-        match state {
-            LexState::Empty => match kind {
-                TokenKind::Whitespace => {}
-                TokenKind::Symbol => state = LexState::Full(Node::Symbol(excerpt.to_string())),
-                TokenKind::Number => state = LexState::Full(Node::Number(excerpt.parse().unwrap())),
-                TokenKind::String => state = LexState::Full(Node::String(excerpt.to_string())),
-                TokenKind::ListStart => state = LexState::List(vec![], Box::new(state)),
-                TokenKind::ListEnd => return Err(ParseNodeError::Unexpected(']')),
-            },
-            LexState::Full(_) => match kind {
-                TokenKind::Whitespace => {}
-                _ => return Err(ParseNodeError::Multiple),
-            },
-            LexState::List(ref mut ns, ref parent) => match kind {
-                TokenKind::Whitespace => {}
-                TokenKind::Symbol => ns.push(Node::Symbol(excerpt.to_string())),
-                TokenKind::Number => ns.push(Node::Number(excerpt.parse().unwrap())),
-                TokenKind::String => ns.push(Node::String(excerpt.to_string())),
-                TokenKind::ListStart => state = LexState::List(vec![], Box::new(state)),
-                TokenKind::ListEnd => match &**parent {
-                    LexState::Empty => state = LexState::Full(Node::List(*ns)),
-                    LexState::Full(_) => return Err(ParseNodeError::Multiple),
-                    LexState::List(pns, pparent) => {
-                        pns.push(Node::List(*ns));
-                        state = LexState::List(*pns, &**pparent);
-                    }
-                },
-            },
+        match kind {
+            TokenKind::Whitespace => {}
+            TokenKind::Symbol => stack.fill(Node::Symbol(parse_symbol(excerpt)?))?,
+            TokenKind::Number => stack.fill(Node::Number(parse_number(excerpt)?))?,
+            TokenKind::String => stack.fill(Node::String(parse_string(excerpt)?))?,
+            TokenKind::ListStart => stack.list_start()?,
+            TokenKind::ListEnd => stack.list_end()?,
         }
     }
 
-    match state {
-        LexState::Empty => Err(ParseNodeError::Empty),
-        LexState::Full(node) => Ok(node),
-        _ => Err(ParseNodeError::Other),
+    stack.finish()
+}
+
+fn parse_symbol(s: &[u8]) -> Result<String, ParseNodeError> {
+    Ok(unsafe { str::from_utf8_unchecked(s) }.to_string())
+}
+
+fn parse_number(s: &[u8]) -> Result<u64, ParseNodeError> {
+    unsafe { str::from_utf8_unchecked(s) }
+        .parse()
+        .map_err(|_| ParseNodeError::Number)
+}
+
+fn parse_string(s: &[u8]) -> Result<String, ParseNodeError> {
+    let len = s.len();
+    let mut r = String::new();
+    let mut i = 0;
+
+    while i < len {
+        match s[i] {
+            b'\\' => {
+                i += 1;
+                if i == len {
+                    return Err(ParseNodeError::String);
+                }
+                match s[i] {
+                    b'\\' | b'"' => r.push(s[i] as char),
+                    b't' => r.push('\t'),
+                    b'r' => r.push('\r'),
+                    b'n' => r.push('\n'),
+                    _ => return Err(ParseNodeError::String),
+                }
+            }
+            b'"' => {
+                i += 1;
+                if i == 1 {
+                    continue;
+                }
+                break;
+            }
+            b => r.push(b as char),
+        }
+
+        i += 1;
     }
+
+    if i != len {
+        return Err(ParseNodeError::String);
+    }
+
+    Ok(r)
 }
