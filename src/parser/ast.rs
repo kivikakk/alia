@@ -12,7 +12,7 @@ pub(crate) enum NodeValue {
     Vec(Vec<Node>),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub(crate) struct Loc(pub(crate) usize, pub(crate) usize);
 
 #[derive(Clone, Copy, Debug)]
@@ -27,6 +27,12 @@ impl Display for Loc {
 impl From<(usize, usize)> for Loc {
     fn from(value: (usize, usize)) -> Self {
         Loc(value.0, value.1)
+    }
+}
+
+impl From<Loc> for lsp_types::Position {
+    fn from(value: Loc) -> Self {
+        Self::new(value.0 as u32, value.1 as u32)
     }
 }
 
@@ -45,6 +51,12 @@ impl From<(Loc, Loc)> for Range {
 impl From<((usize, usize), (usize, usize))> for Range {
     fn from(value: ((usize, usize), (usize, usize))) -> Self {
         Range(value.0.into(), value.1.into())
+    }
+}
+
+impl From<Range> for lsp_types::Range {
+    fn from(value: Range) -> Self {
+        Self::new(value.0.into(), value.1.into())
     }
 }
 
@@ -144,6 +156,34 @@ impl Debug for NodeValue {
 pub(crate) struct Document {
     toplevels: Vec<Node>,
     range: Range,
+}
+
+impl Document {
+    pub(crate) fn nodes_at<L: Into<Loc>>(&self, loc: L) -> Vec<&Node> {
+        let mut nodes = vec![];
+        let loc = loc.into();
+
+        for toplevel in &self.toplevels {
+            Self::nodes_at_recurse(toplevel, loc, &mut nodes);
+        }
+
+        nodes
+    }
+
+    fn nodes_at_recurse<'a>(node: &'a Node, loc: Loc, nodes: &mut Vec<&'a Node>) {
+        if loc >= node.range.0 && loc < node.range.1 {
+            nodes.push(node);
+        }
+
+        match &node.value {
+            NodeValue::Symbol(..) | NodeValue::Number(..) | NodeValue::String(..) => {}
+            NodeValue::List(ns) | NodeValue::Vec(ns) => {
+                for n in ns {
+                    Self::nodes_at_recurse(n, loc, nodes);
+                }
+            }
+        }
+    }
 }
 
 impl Display for Document {

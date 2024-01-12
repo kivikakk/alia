@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use super::Node;
+use super::{Document, Node};
 
 #[test]
 fn simples_all_parse() {
@@ -34,4 +34,9 @@ fn simples_all_parse() {
             assert_eq!(first, second);
         }
     }
+}
+
+#[test]
+fn document_parses() {
+    let doc: Document = "a b".parse().expect("two symbols should parse");
 }

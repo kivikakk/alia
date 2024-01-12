@@ -6,8 +6,8 @@ use lsp_textdocument::TextDocuments;
 use lsp_types::request::{CodeActionRequest, ExecuteCommand, GotoDefinition, HoverRequest};
 use lsp_types::{
     CodeActionResponse, Command, ExecuteCommandOptions, GotoDefinitionResponse, Hover,
-    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Position, Range,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Range, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind,
 };
 
 use crate::parser::Document;
@@ -80,12 +80,15 @@ fn main_loop(
                         let uri = &params.text_document_position_params.text_document.uri;
                         let content = documents.get_document_content(uri, None).unwrap();
                         if let Ok(doc) = content.parse::<Document>() {
+                            let nodes = doc.nodes_at((pos.line as usize, pos.character as usize));
                             let mut value = String::new();
                             writeln!(value, "# {}", "thing")?;
-                            writeln!(value, "Some text")?;
                             writeln!(value, "```lisp")?;
-                            writeln!(value, "(um yea ['hi])")?;
-                            writeln!(value, "{}", doc)?;
+                            let mut range = None;
+                            for node in nodes {
+                                writeln!(value, "{node}")?;
+                                range = Some(node.range.into());
+                            }
                             writeln!(value, "```")?;
 
                             let result = Some(Hover {
@@ -93,10 +96,7 @@ fn main_loop(
                                     kind: MarkupKind::Markdown,
                                     value,
                                 }),
-                                range: Some(Range::new(
-                                    pos,
-                                    Position::new(pos.line, pos.character + 3),
-                                )), // XXX
+                                range,
                             });
                             connection.sender.send(Message::Response(Response {
                                 id,

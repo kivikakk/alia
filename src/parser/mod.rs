@@ -230,6 +230,9 @@ pub(crate) fn parse(
             TokenKind::VecEnd => parser.vec_end((start, end))?,
             TokenKind::Quote => parser.quote((start, end))?,
         }
+
+        // XXX: finish turning this from "parse just one" to "parse one and hold";
+        if let Some(result) = parser.result {}
     }
 
     parser.finish(offset, loc)
