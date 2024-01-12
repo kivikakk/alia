@@ -51,7 +51,7 @@ in {
           }
         ];
         language-server.alia-lsp = {
-          command = "${cfg.package}/bin/alia";
+          command = "alia";
           args = ["--lsp"];
         };
       };
