@@ -1,4 +1,5 @@
 mod ast;
 mod lexer;
+mod tests;
 
-pub(crate) use ast::Node;
+pub(crate) use ast::{Node, ParseNodeError};

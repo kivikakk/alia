@@ -27,7 +27,7 @@ pub(crate) fn lex_one(s: &[u8]) -> Option<LexOne> {
     let mut cursor = 0;
 /*!re2c
     [ \t\r\n]+ { return Some(LexOne { consume: cursor, node: None }); }
-    [a-zA-Z*_-]+ { return Some(LexOne { consume: cursor, node: Some(Node::Symbol(str::from_utf8(&s[..cursor]).unwrap().to_string())) }); }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* { return Some(LexOne { consume: cursor, node: Some(Node::Symbol(str::from_utf8(&s[..cursor]).unwrap().to_string())) }); }
     * { return None; }
 */
 }

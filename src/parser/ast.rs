@@ -1,13 +1,12 @@
-use std::{fmt::Display, str::FromStr};
+use std::fmt::{Debug, Display};
+use std::str::FromStr;
 
 use super::lexer;
 
+#[derive(PartialEq)]
 pub(crate) enum Node {
     Symbol(String),
 }
-
-#[derive(Debug)]
-pub(crate) struct ParseNodeError;
 
 impl FromStr for Node {
     type Err = ParseNodeError;
@@ -25,6 +24,29 @@ impl Display for Node {
     }
 }
 
+impl Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ParseNodeError {
+    Empty,
+    Unexpected(char),
+    Multiple,
+}
+
+impl Display for ParseNodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => f.write_str("input is empty"),
+            Self::Unexpected(c) => write!(f, "unexpected {c:?}"),
+            Self::Multiple => f.write_str("multiple forms found"),
+        }
+    }
+}
+
 pub(crate) fn lex(s: &str) -> Result<Node, ParseNodeError> {
     let s = s.as_bytes();
     let mut offset = 0;
@@ -36,17 +58,19 @@ pub(crate) fn lex(s: &str) -> Result<Node, ParseNodeError> {
                 assert!(consume > 0);
                 offset += consume;
                 if let Some(node) = node {
-                    assert!(result.is_none());
+                    if result.is_some() {
+                        return Err(ParseNodeError::Multiple);
+                    }
                     result = Some(node);
                 }
             }
-            None => return Err(ParseNodeError),
+            None => return Err(ParseNodeError::Unexpected(s[offset] as char)),
         }
     }
 
     if let Some(node) = result {
         Ok(node)
     } else {
-        Err(ParseNodeError)
+        Err(ParseNodeError::Empty)
     }
 }
