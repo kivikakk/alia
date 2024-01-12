@@ -55,7 +55,7 @@ pub(crate) fn lex_one(s: &[u8]) -> Token {
     "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor); }
     [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor); }
 
-    ["] ([^\\"\x00] | [\\][rnt\\"])* ["] { return token(TokenKind::String, s, cursor); }
+    ["] ([^\\"\x00] | [\\][rnt\\"])* ["]? { return token(TokenKind::String, s, cursor); }
 
     "[" { return token(TokenKind::ListStart, s, cursor); }
     "]" { return token(TokenKind::ListEnd, s, cursor); }

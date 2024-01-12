@@ -50,6 +50,7 @@ impl Debug for Node {
 
 pub(crate) enum ParseNodeError {
     Empty,
+    Unfinished,
     Unexpected(char),
     Multiple,
     Number,
@@ -61,6 +62,7 @@ impl Display for ParseNodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => f.write_str("input is empty"),
+            Self::Unfinished => f.write_str("input appears unfinished"),
             Self::Unexpected(c) => write!(f, "unexpected {c:?}"),
             Self::Multiple => f.write_str("multiple forms found"),
             Self::Number => f.write_str("number parse fail"),
@@ -122,7 +124,7 @@ impl ParseStack {
     fn finish(mut self) -> Result<Node, ParseNodeError> {
         let first = self.0.pop().ok_or(ParseNodeError::Other)?;
         if !self.0.is_empty() {
-            return Err(ParseNodeError::Other);
+            return Err(ParseNodeError::Unfinished);
         }
         match first {
             ParseStackEntry::Empty => Err(ParseNodeError::Empty),
@@ -194,7 +196,11 @@ fn parse_string(s: &[u8]) -> Result<String, ParseNodeError> {
                 if i == 1 {
                     continue;
                 }
-                break;
+                if i == len {
+                    return Ok(r);
+                }
+                // should really never happen
+                return Err(ParseNodeError::String);
             }
             b => r.push(b as char),
         }
@@ -202,9 +208,5 @@ fn parse_string(s: &[u8]) -> Result<String, ParseNodeError> {
         i += 1;
     }
 
-    if i != len {
-        return Err(ParseNodeError::String);
-    }
-
-    Ok(r)
+    Err(ParseNodeError::Unfinished)
 }

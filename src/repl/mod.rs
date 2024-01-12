@@ -13,12 +13,22 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
     _ = rl.load_history(HISTORY_FILE);
 
     let active_ns = "*scratch*";
+    let mut acc = String::new();
     loop {
-        match rl.readline(&format!("({active_ns})> ")) {
+        let promptchar = if acc.is_empty() { '>' } else { '*' };
+        match rl.readline(&format!("({active_ns}){promptchar} ")) {
             Ok(line) => {
-                _ = rl.add_history_entry(&line);
-                match line.parse::<Node>() {
-                    Ok(node) => println!("{node}"),
+                let full = acc.clone() + &line;
+                match full.parse::<Node>() {
+                    Ok(node) => {
+                        _ = rl.add_history_entry(&full);
+                        println!("{node}");
+                        acc.clear();
+                    }
+                    Err(ParseNodeError::Unfinished) => {
+                        acc.push_str(&line);
+                        acc.push_str("\n");
+                    }
                     Err(ParseNodeError::Empty) => {}
                     Err(err) => println!("error: {err}"),
                 }
