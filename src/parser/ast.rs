@@ -112,15 +112,11 @@ impl ParseStack {
 
     fn list_end(&mut self) -> Result<(), ParseNodeError> {
         match self.0.pop().ok_or(ParseNodeError::Other)? {
-            ParseStackEntry::List(ns) => {
-                self.0.pop().unwrap();
-                self.fill(Node::List(ns))?;
-            }
+            ParseStackEntry::List(ns) => Ok(self.fill(Node::List(ns))?),
             ParseStackEntry::Empty | ParseStackEntry::Full(_) => {
-                return Err(ParseNodeError::Unexpected(']'))
+                Err(ParseNodeError::Unexpected(']'))
             }
         }
-        Ok(())
     }
 
     fn finish(mut self) -> Result<Node, ParseNodeError> {
