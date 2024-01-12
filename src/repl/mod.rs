@@ -2,7 +2,7 @@ use std::error::Error;
 
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-use crate::parser::{Node, ParseNodeError};
+use crate::parser::{Node, ParseError, ParseErrorKind};
 
 const HISTORY_FILE: &str = ".alia_history";
 
@@ -25,11 +25,17 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         println!("{node}");
                         acc.clear();
                     }
-                    Err(ParseNodeError::Unfinished) => {
+                    Err(ParseError {
+                        kind: ParseErrorKind::Unfinished,
+                        ..
+                    }) => {
                         acc.push_str(&line);
                         acc.push_str("\n");
                     }
-                    Err(ParseNodeError::Empty) => {}
+                    Err(ParseError {
+                        kind: ParseErrorKind::Empty,
+                        ..
+                    }) => {}
                     Err(err) => println!("error: {err}"),
                 }
             }

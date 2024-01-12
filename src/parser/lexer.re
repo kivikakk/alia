@@ -30,45 +30,60 @@ pub(crate) enum TokenKind {
 pub(crate) struct Token<'a> {
     pub(crate) kind: TokenKind,
     pub(crate) excerpt: &'a [u8],
+    pub(crate) start: (usize, usize),
+    pub(crate) end: (usize, usize),
 }
 
-fn token(kind: TokenKind, s: &[u8], n: usize) -> Token {
-    Token { kind, excerpt: &s[..n] }
+fn token(kind: TokenKind, s: &[u8], n: usize, mut loc: (usize, usize)) -> Token {
+    let start = loc;
+    let excerpt = &s[..n];
+    for c in excerpt {
+        match c {
+            b'\n' => loc = (loc.0 + 1, 0),
+            _ => loc = (loc.0, loc.1 + 1),
+        }
+    }
+    Token {
+        kind,
+        excerpt,
+        start,
+        end: loc,
+    }
 }
 
-fn skip(s: &[u8], n: usize) -> Token {
-    token(TokenKind::Whitespace, s, n)
+fn skip(s: &[u8], n: usize, loc: (usize, usize)) -> Token {
+    token(TokenKind::Whitespace, s, n, loc)
 }
 
 fn err(s: &[u8]) -> Token {
-    skip(s, 0)
+    skip(s, 0, (0, 0))
 }
 
-pub(crate) fn lex_one(s: &[u8]) -> Token {
+pub(crate) fn lex_one(s: &[u8], loc: (usize, usize)) -> Token {
     let mut cursor = 0;
     let mut marker = 0;
     let len = s.len();
 /*!re2c
 
-    ";" [^\r\n\x00]* { return skip(s, cursor); }
+    ";" [^\r\n\x00]* { return skip(s, cursor, loc); }
 
-    [ \t\r\n]+ { return skip(s, cursor); }
+    [ \t\r\n]+ { return skip(s, cursor, loc); }
 
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? ":" { return token(TokenKind::SymbolColon, s, cursor); }
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? { return token(TokenKind::Symbol, s, cursor); }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? ":" { return token(TokenKind::SymbolColon, s, cursor, loc); }
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_-]*)? { return token(TokenKind::Symbol, s, cursor, loc); }
 
-    "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor); }
-    [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor); }
+    "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor, loc); }
+    [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor, loc); }
 
-    ["] ([^\\"\x00] | [\\][rnt\\"])* ["]? { return token(TokenKind::String, s, cursor); }
+    ["] ([^\\"\x00] | [\\][rnt\\"])* ["]? { return token(TokenKind::String, s, cursor, loc); }
 
-    "(" { return token(TokenKind::ListStart, s, cursor); }
-    ")" { return token(TokenKind::ListEnd, s, cursor); }
+    "(" { return token(TokenKind::ListStart, s, cursor, loc); }
+    ")" { return token(TokenKind::ListEnd, s, cursor, loc); }
 
-    "[" { return token(TokenKind::VecStart, s, cursor); }
-    "]" { return token(TokenKind::VecEnd, s, cursor); }
+    "[" { return token(TokenKind::VecStart, s, cursor, loc); }
+    "]" { return token(TokenKind::VecEnd, s, cursor, loc); }
 
-    "'" { return token(TokenKind::Quote, s, cursor); }
+    "'" { return token(TokenKind::Quote, s, cursor, loc); }
 
     * { return err(s); }
 
