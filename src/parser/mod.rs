@@ -30,7 +30,6 @@ pub(crate) enum ParseErrorKind {
     Multiple,
     Number,
     String,
-    Other,
 }
 
 impl Display for ParseError {
@@ -48,7 +47,6 @@ impl Display for ParseErrorKind {
             Self::Multiple => f.write_str("multiple forms found"),
             Self::Number => f.write_str("number parse fail"),
             Self::String => f.write_str("string parse fail"),
-            Self::Other => f.write_str("other unsorted error"),
         }
     }
 }
@@ -122,7 +120,7 @@ impl Parser {
     fn list_end<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
         let (ns, srange) = match self.stack.pop() {
             Some(PE::List(ns, srange)) => (ns, srange),
-            _ => return Err(parse_error(ParseErrorKind::Other, range)),
+            _ => return Err(parse_error(ParseErrorKind::Unexpected(')'), range)),
         };
         self.atom(Node::new(NodeValue::List(ns), (srange.0, range.into().1)))
     }
@@ -139,7 +137,7 @@ impl Parser {
     fn vec_end<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
         let (ns, srange) = match self.stack.pop() {
             Some(PE::Vec(ns, srange)) => (ns, srange),
-            _ => return Err(parse_error(ParseErrorKind::Other, range)),
+            _ => return Err(parse_error(ParseErrorKind::Unexpected(']'), range)),
         };
         self.atom(Node::new(NodeValue::Vec(ns), (srange.0, range.into().1)))
     }

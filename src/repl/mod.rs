@@ -36,7 +36,10 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         kind: ParseErrorKind::Empty,
                         ..
                     }) => {}
-                    Err(err) => println!("error: {err}"),
+                    Err(err) => {
+                        println!("error: {err}");
+                        acc.clear();
+                    }
                 }
             }
             Err(ReadlineError::Interrupted) => {
