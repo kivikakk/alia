@@ -3,7 +3,7 @@
     re2c:encoding-policy     = substitute;
 
     re2c:define:YYCTYPE      = u8;
-    re2c:define:YYPEEK       = "*s.get_unchecked(cursor)";
+    re2c:define:YYPEEK       = "if cursor < len { *s.get_unchecked(cursor) } else { 0 }";
     re2c:define:YYSKIP       = "cursor += 1;";
     re2c:define:YYBACKUP     = "marker = cursor;";
     re2c:define:YYRESTORE    = "cursor = marker;";
@@ -16,20 +16,53 @@
 
 use std::str;
 
-use super::ast::Node;
-
-pub(crate) struct LexOne {
-    pub(crate) consume: usize,
-    pub(crate) node: Option<Node>,
+pub(crate) enum TokenKind {
+    Whitespace,
+    Symbol,
+    Number,
+    String,
+    ListStart,
+    ListEnd,
 }
 
-pub(crate) fn lex_one(s: &[u8]) -> LexOne {
+pub(crate) struct Token<'a> {
+    pub(crate) kind: TokenKind,
+    pub(crate) excerpt: &'a str,
+}
+
+fn token(kind: TokenKind, s: &[u8], n: usize) -> Token {
+    Token { kind, excerpt: &unsafe { str::from_utf8_unchecked(s) }[..n] }
+}
+
+fn skip(s: &[u8], n: usize) -> Token {
+    token(TokenKind::Whitespace, s, n)
+}
+
+fn err(s: &[u8]) -> Token {
+    skip(s, 0)
+}
+
+pub(crate) fn lex_one(s: &[u8]) -> Token {
     let mut cursor = 0;
     let mut marker = 0;
+    let len = s.len();
 /*!re2c
-    ";" [^\r\n]* { return LexOne { consume: cursor, node: None }; }
-    [ \t\r\n]+ { return LexOne { consume: cursor, node: None }; }
-    [a-zA-Z*_-][a-zA-Z0-9*_-]* { return LexOne { consume: cursor, node: Some(Node::Symbol(str::from_utf8(&s[..cursor]).unwrap().to_string())) }; }
-    * { return LexOne { consume: 0, node: None }; }
+
+    ";" [^\r\n\x00]* { return skip(s, cursor); }
+
+    [ \t\r\n]+ { return skip(s, cursor); }
+
+    [a-zA-Z*_-][a-zA-Z0-9*_-]* { return token(TokenKind::Symbol, s, cursor); }
+
+    "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor); }
+    [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor); }
+
+    ["] ([^\\"\x00] | [\\][rnt\\"])* ["] { return token(TokenKind::String, s, cursor); }
+
+    "[" { return token(TokenKind::ListStart, s, cursor); }
+    "]" { return token(TokenKind::ListEnd, s, cursor); }
+
+    * { return err(s); }
+
 */
 }

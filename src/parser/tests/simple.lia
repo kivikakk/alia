@@ -1,20 +1,46 @@
-; good
+:)
 abcd
 a-b-c
 *abcd*
 ab12
 
-; bad
-; abcd.
+:(
+abcd.
 
-; good
+:)
 123
 12345.0
 0xABCD_EF01
 
-; bad
-; 0a1
-; 0o1
-; 5-
-; 99.9-
-; 0xABCDEFG
+:(
+0x
+0a1
+0o1
+5-
+99.9-
+0xABCDEFG
+
+:)
+"xyz"
+"abc\"d"
+"abc \\d\""
+"\r\n\t"
+
+:(
+"abc
+"abc"d"
+"abc""d"
+"abc\"
+"abc\i"
+
+:)
+[]
+[1]
+[1 a]
+[abc "def[" "gh\"" **********]
+
+:)
+[
+]
+[[]
+[]]
