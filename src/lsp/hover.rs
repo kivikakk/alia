@@ -19,23 +19,39 @@ pub(super) fn handle(
     };
 
     let Position { line, character } = params.text_document_position_params.position;
-    let nodes = doc.nodes_at((line as usize, character as usize));
+    let mut nodes = doc
+        .nodes_at((line as usize, character as usize))
+        .into_iter();
+
+    let closest = match nodes.next() {
+        Some(n) => n,
+        None => return Ok(None),
+    };
 
     let mut value = String::new();
-    writeln!(value, "# {}", "thing").unwrap();
-    writeln!(value, "```lisp").unwrap();
-    let mut range = None;
-    for node in nodes {
+    writeln!(value, "# {closest}").unwrap();
+    writeln!(
+        value,
+        "inferred type: **i don't know i'm just a baby squirrel**"
+    )
+    .unwrap();
+
+    let mut first = true;
+    while let Some(node) = nodes.next() {
+        if first {
+            writeln!(value, "## other forms under point").unwrap();
+            first = false;
+        }
+        writeln!(value, "```lisp").unwrap();
         writeln!(value, "{node}").unwrap();
-        range = Some(node.range.into());
+        writeln!(value, "```").unwrap();
     }
-    writeln!(value, "```").unwrap();
 
     Ok(Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value,
         }),
-        range,
+        range: Some(closest.range.into()),
     }))
 }

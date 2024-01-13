@@ -18,6 +18,7 @@ impl Document {
             Self::nodes_at_recurse(toplevel, loc, &mut nodes);
         }
 
+        nodes.reverse();
         nodes
     }
 

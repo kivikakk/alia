@@ -50,7 +50,11 @@ impl Parser {
                     return Ok(());
                 }
                 Some(PE::Quote(range)) => {
-                    let range_all = (range.0, node.range.1);
+                    let range_all = if range.0 < node.range.1 {
+                        (range.0, node.range.1)
+                    } else {
+                        (node.range.0, range.1)
+                    };
                     node = Node::new(
                         NodeValue::List(vec![
                             Node::new(NodeValue::Symbol("quote".to_string()), *range),
@@ -172,9 +176,11 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
                 // Elixir does [a: b] => [{:a, b}].  Ruby does f(a: b) => f({ a: b }) (-ish,
                 // modulo all the Ruby 3 kwargs improvements).
                 // Here we do [a: b] => ['a b].
+                let kwend = (end.0, end.1 - 1).into();
+                parser.quote((kwend, end))?;
                 parser.atom(Node::new(
-                    NodeValue::Symbol(parse_symbol(&excerpt[..excerpt.len() - 1], (start, end))?),
-                    (start, end),
+                    NodeValue::Symbol(parse_symbol(&excerpt[..excerpt.len() - 1], (start, kwend))?),
+                    (start, kwend),
                 ))?
             }
             TokenKind::Number => parser.atom(Node::new(
