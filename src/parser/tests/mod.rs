@@ -1,6 +1,25 @@
 #![cfg(test)]
 
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
+
 use super::{Document, Node};
+
+fn assert_roundtrips<T>(s: &str)
+where
+    T: FromStr + Display + PartialEq + Debug,
+    T::Err: Debug,
+{
+    println!("should parse: {s}");
+    let first = s.parse::<T>().expect(&format!("input should parse: {s}"));
+    let rendered = format!("{}", first);
+    let second = rendered
+        .parse::<T>()
+        .expect("rerendered input should parse");
+    assert_eq!(first, second);
+}
 
 #[test]
 fn simples_all_parse() {
@@ -23,20 +42,18 @@ fn simples_all_parse() {
             println!("shouldn't parse: {line}");
             line.parse::<Node>().expect_err("input shouldn't parse");
         } else {
-            println!("should parse: {line}");
-            let first = line
-                .parse::<Node>()
-                .expect(&format!("input should parse: {line}"));
-            let rendered = format!("{}", first);
-            let second = rendered
-                .parse::<Node>()
-                .expect("rerendered input should parse");
-            assert_eq!(first, second);
+            assert_roundtrips::<Node>(line);
         }
     }
 }
 
 #[test]
 fn document_parses() {
-    let doc: Document = "a b".parse().expect("two symbols should parse");
+    assert_roundtrips::<Document>("a b");
+    assert_roundtrips::<Document>(
+        r#"
+        (ns abc)
+        (abc/def [ghi: jkl])
+    "#,
+    );
 }

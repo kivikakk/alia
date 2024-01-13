@@ -1,13 +1,18 @@
-mod ast;
+mod document;
 mod lexer;
+mod loc;
+mod node;
 mod tests;
 
 use std::fmt::{Debug, Display};
 use std::str;
 
-pub(crate) use self::ast::{Document, Node};
-use self::ast::{Loc, NodeValue, Range};
+pub(crate) use self::document::Document;
+pub(crate) use self::node::Node;
+
 use self::lexer::{lex_one, Token, TokenKind};
+use self::loc::{Loc, Range};
+use self::node::NodeValue;
 
 pub(crate) struct ParseError {
     pub(crate) kind: ParseErrorKind,
@@ -163,14 +168,21 @@ impl Parser {
         )
     }
 
-    fn finish<L: Into<Loc>>(self, offset: usize, loc: L) -> Result<(Node, usize, Loc), ParseError> {
+    fn try_finish(&mut self) -> Option<Node> {
+        if !self.stack.is_empty() {
+            None
+        } else {
+            self.result.take()
+        }
+    }
+
+    fn eof<L: Into<Loc>>(self, loc: L) -> Result<Node, ParseError> {
         let loc = loc.into();
         if !self.stack.is_empty() {
             return Err(parse_error(ParseErrorKind::Unfinished, (loc, loc)));
         }
         self.result
             .ok_or_else(|| parse_error(ParseErrorKind::Empty, ((0, 0).into(), loc)))
-            .map(|n| (n, offset, loc))
     }
 }
 
@@ -231,11 +243,13 @@ pub(crate) fn parse(
             TokenKind::Quote => parser.quote((start, end))?,
         }
 
-        // XXX: finish turning this from "parse just one" to "parse one and hold";
-        if let Some(result) = parser.result {}
+        if let Some(result) = parser.try_finish() {
+            return Ok((result, offset, loc));
+        }
     }
 
-    parser.finish(offset, loc)
+    let result = parser.eof(loc)?;
+    Ok((result, offset, loc))
 }
 
 fn parse_symbol<R: Into<Range>>(a: &[u8], _range: R) -> Result<String, ParseError> {

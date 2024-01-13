@@ -5,9 +5,10 @@ a-b-c
 ab12
 a/b
 Kin
+kin.connect
+abcd. ; XXX shouldn't parse imo
 
 :(
-abcd.
 a/b/c
 
 :)
