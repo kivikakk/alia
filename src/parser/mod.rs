@@ -1,66 +1,19 @@
 mod document;
+mod error;
 mod lexer;
 mod loc;
 mod node;
 mod tests;
 
-use std::fmt::{Debug, Display};
 use std::str;
 
 pub(crate) use self::document::Document;
+pub(crate) use self::error::{Error, ErrorKind};
+pub(crate) use self::loc::{Loc, Range};
 pub(crate) use self::node::Node;
 
 use self::lexer::{lex_one, Token, TokenKind};
-use self::loc::{Loc, Range};
 use self::node::NodeValue;
-
-pub(crate) struct ParseError {
-    pub(crate) kind: ParseErrorKind,
-    pub(crate) range: Range,
-}
-
-impl ParseError {
-    fn new<R: Into<Range>>(kind: ParseErrorKind, range: R) -> Self {
-        ParseError {
-            kind,
-            range: range.into(),
-        }
-    }
-}
-
-pub(crate) enum ParseErrorKind {
-    Empty,
-    Unfinished,
-    Unexpected(char),
-    Multiple,
-    Number,
-    String,
-}
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} at [{}]", self.kind, self.range)
-    }
-}
-
-impl Display for ParseErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Empty => f.write_str("input is empty"),
-            Self::Unfinished => f.write_str("input appears unfinished"),
-            Self::Unexpected(c) => write!(f, "unexpected {c:?}"),
-            Self::Multiple => f.write_str("multiple forms found"),
-            Self::Number => f.write_str("number parse fail"),
-            Self::String => f.write_str("string parse fail"),
-        }
-    }
-}
-
-impl Debug for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
-    }
-}
 
 struct Parser {
     stack: Vec<PE>,
@@ -81,13 +34,13 @@ impl Parser {
         }
     }
 
-    fn atom(&mut self, mut node: Node) -> Result<(), ParseError> {
+    fn atom(&mut self, mut node: Node) -> Result<(), Error> {
         let origin = node.range;
         loop {
             match self.stack.last_mut() {
                 None => {
                     if self.result.is_some() {
-                        return Err(ParseError::new(ParseErrorKind::Multiple, origin));
+                        return Err(Error::new(ErrorKind::Multiple, origin));
                     }
                     self.result = Some(node);
                     return Ok(());
@@ -113,41 +66,41 @@ impl Parser {
         }
     }
 
-    fn list_start<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
+    fn list_start<R: Into<Range>>(&mut self, range: R) -> Result<(), Error> {
         if self.result.is_some() {
-            return Err(ParseError::new(ParseErrorKind::Multiple, range));
+            return Err(Error::new(ErrorKind::Multiple, range));
         }
 
         self.stack.push(PE::List(vec![], range.into()));
         Ok(())
     }
 
-    fn list_end<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
+    fn list_end<R: Into<Range>>(&mut self, range: R) -> Result<(), Error> {
         let (ns, srange) = match self.stack.pop() {
             Some(PE::List(ns, srange)) => (ns, srange),
-            _ => return Err(parse_error(ParseErrorKind::Unexpected(')'), range)),
+            _ => return Err(parse_error(ErrorKind::Unexpected(')'), range)),
         };
         self.atom(Node::new(NodeValue::List(ns), (srange.0, range.into().1)))
     }
 
-    fn vec_start<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
+    fn vec_start<R: Into<Range>>(&mut self, range: R) -> Result<(), Error> {
         if self.result.is_some() {
-            return Err(ParseError::new(ParseErrorKind::Multiple, range));
+            return Err(Error::new(ErrorKind::Multiple, range));
         }
 
         self.stack.push(PE::Vec(vec![], range.into()));
         Ok(())
     }
 
-    fn vec_end<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
+    fn vec_end<R: Into<Range>>(&mut self, range: R) -> Result<(), Error> {
         let (ns, srange) = match self.stack.pop() {
             Some(PE::Vec(ns, srange)) => (ns, srange),
-            _ => return Err(parse_error(ParseErrorKind::Unexpected(']'), range)),
+            _ => return Err(parse_error(ErrorKind::Unexpected(']'), range)),
         };
         self.atom(Node::new(NodeValue::Vec(ns), (srange.0, range.into().1)))
     }
 
-    fn quote<R: Into<Range>>(&mut self, range: R) -> Result<(), ParseError> {
+    fn quote<R: Into<Range>>(&mut self, range: R) -> Result<(), Error> {
         if let Some(result) = self.result.take() {
             self.result = Some(Self::quoted_form(result, range));
         } else {
@@ -176,17 +129,17 @@ impl Parser {
         }
     }
 
-    fn eof<L: Into<Loc>>(self, loc: L) -> Result<Node, ParseError> {
+    fn eof<L: Into<Loc>>(self, loc: L) -> Result<Node, Error> {
         let loc = loc.into();
         if !self.stack.is_empty() {
-            return Err(parse_error(ParseErrorKind::Unfinished, (loc, loc)));
+            return Err(parse_error(ErrorKind::Unfinished, (loc, loc)));
         }
         self.result
-            .ok_or_else(|| parse_error(ParseErrorKind::Empty, ((0, 0).into(), loc)))
+            .ok_or_else(|| parse_error(ErrorKind::Empty, ((0, 0).into(), loc)))
     }
 }
 
-fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc), ParseError> {
+fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc), Error> {
     let s = s.as_bytes();
     let mut parser = Parser::new();
 
@@ -200,8 +153,8 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
         loc = end;
         let consume = excerpt.len();
         if consume == 0 {
-            return Err(ParseError::new(
-                ParseErrorKind::Unexpected(s[offset] as char),
+            return Err(Error::new(
+                ErrorKind::Unexpected(s[offset] as char),
                 (start, end),
             ));
         }
@@ -248,17 +201,17 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
     Ok((result, offset, loc))
 }
 
-fn parse_symbol<R: Into<Range>>(a: &[u8], _range: R) -> Result<String, ParseError> {
+fn parse_symbol<R: Into<Range>>(a: &[u8], _range: R) -> Result<String, Error> {
     Ok(unsafe { str::from_utf8_unchecked(a) }.to_string())
 }
 
-fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<u64, ParseError> {
+fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<u64, Error> {
     unsafe { str::from_utf8_unchecked(s) }
         .parse()
-        .map_err(|_| parse_error(ParseErrorKind::Number, range))
+        .map_err(|_| parse_error(ErrorKind::Number, range))
 }
 
-fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, ParseError> {
+fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {
     let len = s.len();
     let mut r = String::new();
     let mut i = 0;
@@ -268,7 +221,7 @@ fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, ParseError
             b'\\' => {
                 i += 1;
                 if i == len {
-                    return Err(parse_error(ParseErrorKind::String, range));
+                    return Err(parse_error(ErrorKind::String, range));
                     // XXX
                 }
                 match s[i] {
@@ -276,7 +229,7 @@ fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, ParseError
                     b't' => r.push('\t'),
                     b'r' => r.push('\r'),
                     b'n' => r.push('\n'),
-                    _ => return Err(parse_error(ParseErrorKind::String, range)),
+                    _ => return Err(parse_error(ErrorKind::String, range)),
                 }
             }
             b'"' => {
@@ -288,7 +241,7 @@ fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, ParseError
                     return Ok(r);
                 }
                 // should really never happen
-                return Err(parse_error(ParseErrorKind::String, range));
+                return Err(parse_error(ErrorKind::String, range));
             }
             b => r.push(b as char),
         }
@@ -296,11 +249,11 @@ fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, ParseError
         i += 1;
     }
 
-    Err(parse_error(ParseErrorKind::Unfinished, range))
+    Err(parse_error(ErrorKind::Unfinished, range))
 }
 
-fn parse_error<R: Into<Range>>(kind: ParseErrorKind, range: R) -> ParseError {
-    ParseError {
+fn parse_error<R: Into<Range>>(kind: ErrorKind, range: R) -> Error {
+    Error {
         kind,
         range: range.into(),
     }

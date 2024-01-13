@@ -1,7 +1,8 @@
 use std::fmt::{Debug, Display};
 use std::str::{self, FromStr};
 
-use super::{Loc, Node, NodeValue, ParseError, ParseErrorKind, Range};
+use super::{Loc, Node, NodeValue, Range};
+use crate::parser;
 
 pub(crate) struct Document {
     pub(crate) toplevels: Vec<Node>,
@@ -64,7 +65,7 @@ impl Debug for Document {
 }
 
 impl FromStr for Document {
-    type Err = ParseError;
+    type Err = parser::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut toplevels = vec![];
@@ -78,8 +79,8 @@ impl FromStr for Document {
                     offset = new_offset;
                     loc = new_loc;
                 }
-                Err(ParseError {
-                    kind: ParseErrorKind::Empty,
+                Err(parser::Error {
+                    kind: parser::ErrorKind::Empty,
                     ..
                 }) => break,
                 Err(e) => return Err(e),

@@ -1,7 +1,8 @@
 use std::fmt::{Debug, Display};
 use std::str::{self, FromStr};
 
-use super::{Document, ParseError, ParseErrorKind, Range};
+use super::{Document, Range};
+use crate::parser;
 
 #[derive(PartialEq)]
 pub(crate) enum NodeValue {
@@ -33,18 +34,18 @@ impl PartialEq for Node {
 }
 
 impl FromStr for Node {
-    type Err = ParseError;
+    type Err = parser::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut doc = s.parse::<Document>()?;
         match doc.toplevels.len() {
-            0 => Err(ParseError {
-                kind: ParseErrorKind::Empty,
+            0 => Err(parser::Error {
+                kind: parser::ErrorKind::Empty,
                 range: doc.range,
             }),
             1 => Ok(doc.toplevels.pop().unwrap()),
-            _ => Err(ParseError {
-                kind: ParseErrorKind::Multiple,
+            _ => Err(parser::Error {
+                kind: parser::ErrorKind::Multiple,
                 range: doc.range,
             }),
         }
