@@ -6,13 +6,15 @@ ab12
 a/b
 Kin
 kin.connect
-abcd. ; XXX shouldn't parse imo
 
 :(
 a/b/c
+abcd.
 
 :)
 123
+12345.0
+0xABCD_EF01
 
 :(
 0x
@@ -21,8 +23,6 @@ a/b/c
 5-
 99.9-
 0xABCDEFG
-0xABCD_EF01 ; XXX NYI
-12345.0     ; XXX NYI
 
 :)
 "xyz"

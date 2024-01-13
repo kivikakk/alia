@@ -35,6 +35,7 @@ pub(crate) enum ErrorKind {
     Multiple,
     Number,
     String,
+    Symbol,
 }
 
 impl Display for ErrorKind {
@@ -46,6 +47,7 @@ impl Display for ErrorKind {
             Self::Multiple => f.write_str("multiple forms found"),
             Self::Number => f.write_str("number parse fail"),
             Self::String => f.write_str("string parse fail"),
+            Self::Symbol => f.write_str("symbol parse fail"),
         }
     }
 }

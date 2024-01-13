@@ -184,7 +184,7 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
                 ))?
             }
             TokenKind::Number => parser.atom(Node::new(
-                NodeValue::Number(parse_number(excerpt, (start, end))?),
+                parse_number(excerpt, (start, end))?,
                 (start, end),
             ))?,
             TokenKind::String => parser.atom(Node::new(
@@ -207,14 +207,32 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
     Ok((result, offset, loc))
 }
 
-fn parse_symbol<R: Into<Range>>(a: &[u8], _range: R) -> Result<String, Error> {
-    Ok(unsafe { str::from_utf8_unchecked(a) }.to_string())
+fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {
+    let s = unsafe { str::from_utf8_unchecked(s) }.to_string();
+    if s.ends_with(".") {
+        Err(parse_error(ErrorKind::Symbol, range))
+    } else {
+        Ok(s)
+    }
 }
 
-fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<u64, Error> {
-    unsafe { str::from_utf8_unchecked(s) }
-        .parse()
-        .map_err(|_| parse_error(ErrorKind::Number, range))
+fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> {
+    let s = unsafe { str::from_utf8_unchecked(s) };
+    let s = s.replace("_", "");
+    if s.contains('.') {
+        let f: f64 = s
+            .parse()
+            .map_err(|_| parse_error(ErrorKind::Number, range))?;
+        Ok(NodeValue::Float(f))
+    } else {
+        let i: i64 = if s.starts_with("0x") || s.starts_with("0X") {
+            i64::from_str_radix(&s[2..], 16)
+        } else {
+            i64::from_str_radix(&s, 10)
+        }
+        .map_err(|_| parse_error(ErrorKind::Number, range))?;
+        Ok(NodeValue::Integer(i))
+    }
 }
 
 fn parse_string<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {

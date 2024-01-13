@@ -28,7 +28,10 @@ impl Document {
         }
 
         match &node.value {
-            NodeValue::Symbol(..) | NodeValue::Number(..) | NodeValue::String(..) => {}
+            NodeValue::Symbol(..)
+            | NodeValue::Integer(..)
+            | NodeValue::Float(..)
+            | NodeValue::String(..) => {}
             NodeValue::List(ns) | NodeValue::Vec(ns) => {
                 for n in ns {
                     Self::nodes_at_recurse(n, loc, nodes);

@@ -4,15 +4,6 @@ use std::str::{self, FromStr};
 use super::{Document, Range};
 use crate::parser;
 
-#[derive(PartialEq)]
-pub(crate) enum NodeValue {
-    Symbol(String),
-    Number(u64),
-    String(String),
-    List(Vec<Node>),
-    Vec(Vec<Node>),
-}
-
 pub(crate) struct Node {
     pub(crate) value: NodeValue,
     pub(crate) range: Range,
@@ -58,11 +49,22 @@ impl Display for Node {
     }
 }
 
+#[derive(PartialEq)]
+pub(crate) enum NodeValue {
+    Symbol(String),
+    Integer(i64),
+    Float(f64),
+    String(String),
+    List(Vec<Node>),
+    Vec(Vec<Node>),
+}
+
 impl Display for NodeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeValue::Symbol(s) => f.write_str(s),
-            NodeValue::Number(n) => write!(f, "{n}"),
+            NodeValue::Integer(i) => write!(f, "{i}"),
+            NodeValue::Float(d) => write!(f, "{d:?}"),
             NodeValue::String(s) => write!(f, "{s:?}"),
             NodeValue::List(ns) => {
                 f.write_str("(")?;
