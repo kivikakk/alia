@@ -1,25 +1,15 @@
 use std::error::Error;
-use std::fmt::Write;
 
 use lsp_server::{Connection, ExtractError, Message, Request, RequestId, Response, ResponseError};
 use lsp_textdocument::TextDocuments;
 use lsp_types::request::{CodeActionRequest, ExecuteCommand, GotoDefinition, HoverRequest};
 use lsp_types::{
-    CodeActionResponse, Command, ExecuteCommandOptions, GotoDefinitionResponse, Hover,
-    HoverContents, InitializeParams, MarkupContent, MarkupKind, OneOf, Range, ServerCapabilities,
-    TextDocumentSyncCapability, TextDocumentSyncKind,
+    InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
 
-use crate::parser::Document;
-
-const COMMAND_START_VM: &str = "startVm";
-const COMMAND_START_VM_FRIENDLY: &str = "Start alia VM";
-
-const COMMAND_STOP_VM: &str = "stopVm";
-const COMMAND_STOP_VM_FRIENDLY: &str = "Stop alia VM";
-
-const COMMAND_EXEC_TOPLEVEL: &str = "execToplevel";
-const COMMAND_EXEC_TOPLEVEL_FRIENDLY: &str = "Execute top-level form under cursor in running VM";
+mod action;
+mod goto;
+mod hover;
 
 pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>> {
     eprintln!("alia lsp server starting");
@@ -37,11 +27,8 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
         )),
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
-        code_action_provider: Some(true.into()),
-        execute_command_provider: Some(ExecuteCommandOptions {
-            commands: vec![COMMAND_START_VM.to_string()],
-            ..Default::default()
-        }),
+        code_action_provider: action::code_action_provider(),
+        execute_command_provider: action::execute_command_provider(),
         ..Default::default()
     })
     .unwrap();
@@ -60,12 +47,53 @@ pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>
     Ok(())
 }
 
+macro_rules! lsp_handler {
+    ($req:ident => $ty:ty, $handler:path[$ls: ident]) => {
+        let $req = match cast::<$ty>($req) {
+            Ok((id, params)) => {
+                let response = match $handler(params, &mut $ls) {
+                    Ok(value) => Response {
+                        id,
+                        result: Some(serde_json::to_value(&value).unwrap()),
+                        error: None,
+                    },
+                    Err(err) => Response {
+                        id,
+                        result: None,
+                        error: Some(err),
+                    },
+                };
+                $ls.connection.sender.send(Message::Response(response))?;
+                continue;
+            }
+            Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
+            Err(ExtractError::MethodMismatch(req)) => req,
+        };
+    };
+}
+
+struct LspState<'c, 'd> {
+    connection: &'c Connection,
+    documents: &'d mut TextDocuments,
+    vm_running: bool,
+}
+
+impl<'c, 'd> LspState<'c, 'd> {
+    fn new(connection: &'c Connection, documents: &'d mut TextDocuments) -> LspState<'c, 'd> {
+        LspState {
+            connection,
+            documents,
+            vm_running: false,
+        }
+    }
+}
+
 fn main_loop(
     connection: Connection,
     params: serde_json::Value,
     documents: &mut TextDocuments,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let mut vm_running = false;
+    let mut ls = LspState::new(&connection, documents);
 
     let _params: InitializeParams = serde_json::from_value(params).unwrap();
     for msg in &connection.receiver {
@@ -74,134 +102,16 @@ fn main_loop(
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                let req = match cast::<HoverRequest>(req) {
-                    Ok((id, params)) => {
-                        let pos = params.text_document_position_params.position;
-                        let uri = &params.text_document_position_params.text_document.uri;
-                        let content = documents.get_document_content(uri, None).unwrap();
-                        if let Ok(doc) = content.parse::<Document>() {
-                            let nodes = doc.nodes_at((pos.line as usize, pos.character as usize));
-                            let mut value = String::new();
-                            writeln!(value, "# {}", "thing")?;
-                            writeln!(value, "```lisp")?;
-                            let mut range = None;
-                            for node in nodes {
-                                writeln!(value, "{node}")?;
-                                range = Some(node.range.into());
-                            }
-                            writeln!(value, "```")?;
-
-                            let result = Some(Hover {
-                                contents: HoverContents::Markup(MarkupContent {
-                                    kind: MarkupKind::Markdown,
-                                    value,
-                                }),
-                                range,
-                            });
-                            connection.sender.send(Message::Response(Response {
-                                id,
-                                result: Some(serde_json::to_value(&result).unwrap()),
-                                error: None,
-                            }))?;
-                        } else {
-                            connection.sender.send(Message::Response(Response {
-                                id,
-                                result: Some(serde_json::to_value(&None::<Hover>).unwrap()),
-                                error: None,
-                            }))?;
-                        }
-                        continue;
-                    }
-                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
-                    Err(ExtractError::MethodMismatch(req)) => req,
-                };
-                let req = match cast::<GotoDefinition>(req) {
-                    Ok((id, _params)) => {
-                        let result = Some(GotoDefinitionResponse::Array(Vec::new()));
-                        connection.sender.send(Message::Response(Response {
-                            id,
-                            result: Some(serde_json::to_value(&result).unwrap()),
-                            error: None,
-                        }))?;
-                        continue;
-                    }
-                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
-                    Err(ExtractError::MethodMismatch(req)) => req,
-                };
-                let req = match cast::<CodeActionRequest>(req) {
-                    Ok((id, params)) => {
-                        let mut result: CodeActionResponse = vec![];
-
-                        if !vm_running {
-                            result.push(
-                                Command::new(
-                                    COMMAND_START_VM_FRIENDLY.to_string(),
-                                    COMMAND_START_VM.to_string(),
-                                    None,
-                                )
-                                .into(),
-                            );
-                        } else {
-                            result.push(
-                                Command::new(
-                                    COMMAND_EXEC_TOPLEVEL_FRIENDLY.to_string(),
-                                    COMMAND_EXEC_TOPLEVEL.to_string(),
-                                    Some(vec![serde_json::to_value(params.range).unwrap()]),
-                                )
-                                .into(),
-                            );
-                            result.push(
-                                Command::new(
-                                    COMMAND_STOP_VM_FRIENDLY.to_string(),
-                                    COMMAND_STOP_VM.to_string(),
-                                    None,
-                                )
-                                .into(),
-                            );
-                        }
-                        let result = Some(result);
-                        connection.sender.send(Message::Response(Response {
-                            id,
-                            result: Some(serde_json::to_value(&result).unwrap()),
-                            error: None,
-                        }))?;
-                        continue;
-                    }
-                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
-                    Err(ExtractError::MethodMismatch(req)) => req,
-                };
-                let req = match cast::<ExecuteCommand>(req) {
-                    Ok((id, params)) => {
-                        if params.command == COMMAND_START_VM {
-                            assert!(!vm_running);
-                            vm_running = true;
-                        } else if params.command == COMMAND_STOP_VM {
-                            assert!(vm_running);
-                            vm_running = false;
-                        } else if params.command == COMMAND_EXEC_TOPLEVEL {
-                            assert!(vm_running);
-                            assert!(params.arguments.len() == 1);
-                            let _range: Range =
-                                serde_json::from_value(params.arguments[0].clone()).unwrap();
-                        } else {
-                            panic!("unknown command {:?}", params.command);
-                        };
-                        connection.sender.send(Message::Response(Response {
-                            id,
-                            result: Some(serde_json::to_value(true).unwrap()),
-                            error: None,
-                        }))?;
-                        continue;
-                    }
-                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
-                    Err(ExtractError::MethodMismatch(req)) => req,
-                };
+                lsp_handler!(req => HoverRequest, hover::handle[ls]);
+                lsp_handler!(req => GotoDefinition, goto::handle[ls]);
+                lsp_handler!(req => CodeActionRequest, action::list[ls]);
+                lsp_handler!(req => ExecuteCommand, action::execute[ls]);
                 connection.sender.send(Message::Response(Response {
                     id: req.id,
                     result: None,
                     error: Some(ResponseError {
                         code: 1, // XXX
-                        message: "weh".to_string(),
+                        message: "unhandled command".to_string(),
                         data: None,
                     }),
                 }))?;
@@ -210,7 +120,7 @@ fn main_loop(
                 eprintln!("got response: {resp:?}");
             }
             Message::Notification(not) => {
-                if !documents.listen(not.method.as_str(), &not.params) {
+                if !ls.documents.listen(not.method.as_str(), &not.params) {
                     eprintln!("got notification: {not:?}");
                 }
             }

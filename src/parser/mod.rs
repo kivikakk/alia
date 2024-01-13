@@ -186,11 +186,7 @@ impl Parser {
     }
 }
 
-pub(crate) fn parse(
-    s: &str,
-    mut offset: usize,
-    mut loc: Loc,
-) -> Result<(Node, usize, Loc), ParseError> {
+fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc), ParseError> {
     let s = s.as_bytes();
     let mut parser = Parser::new();
 

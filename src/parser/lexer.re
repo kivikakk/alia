@@ -61,7 +61,7 @@ fn err(s: &[u8]) -> Token {
     skip(s, 0, Loc(0, 0))
 }
 
-pub(crate) fn lex_one(s: &[u8], loc: Loc) -> Token {
+pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
     let mut cursor = 0;
     let mut marker = 0;
     let len = s.len();
