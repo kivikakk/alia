@@ -73,44 +73,54 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                             yystate = 2;
                             continue 'yyl;
                         }
-                        0x22 => {
+                        0x21
+                        | 0x2A..=0x2B
+                        | 0x2D
+                        | 0x3C..=0x3E
+                        | 0x41..=0x5A
+                        | 0x5F
+                        | 0x61..=0x7A => {
                             yystate = 4;
                             continue 'yyl;
                         }
-                        0x27 => {
+                        0x22 => {
                             yystate = 6;
                             continue 'yyl;
                         }
-                        0x28 => {
-                            yystate = 7;
-                            continue 'yyl;
-                        }
-                        0x29 => {
+                        0x27 => {
                             yystate = 8;
                             continue 'yyl;
                         }
-                        0x2A | 0x2D | 0x41..=0x5A | 0x5F | 0x61..=0x7A => {
+                        0x28 => {
                             yystate = 9;
                             continue 'yyl;
                         }
-                        0x30 => {
+                        0x29 => {
+                            yystate = 10;
+                            continue 'yyl;
+                        }
+                        0x2F => {
                             yystate = 11;
                             continue 'yyl;
                         }
-                        0x31..=0x39 => {
+                        0x30 => {
                             yystate = 13;
                             continue 'yyl;
                         }
-                        0x3B => {
+                        0x31..=0x39 => {
                             yystate = 15;
                             continue 'yyl;
                         }
-                        0x5B => {
+                        0x3B => {
                             yystate = 17;
                             continue 'yyl;
                         }
+                        0x5B => {
+                            yystate = 19;
+                            continue 'yyl;
+                        }
                         0x5D => {
-                            yystate = 18;
+                            yystate = 20;
                             continue 'yyl;
                         }
                         _ => {
@@ -156,54 +166,26 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x01..=0x21 | 0x23..=0x5B | 0x5D..=0x7F => {
+                        0x21
+                        | 0x2A..=0x2B
+                        | 0x2D..=0x2E
+                        | 0x30..=0x39
+                        | 0x3C..=0x3E
+                        | 0x41..=0x5A
+                        | 0x5F
+                        | 0x61..=0x7A => {
                             cursor += 1;
                             yystate = 4;
                             continue 'yyl;
                         }
-                        0x22 => {
+                        0x2F => {
                             cursor += 1;
-                            yystate = 19;
+                            yystate = 21;
                             continue 'yyl;
                         }
-                        0x5C => {
-                            cursor += 1;
-                            yystate = 20;
-                            continue 'yyl;
-                        }
-                        0xC2..=0xDF => {
-                            cursor += 1;
-                            yystate = 22;
-                            continue 'yyl;
-                        }
-                        0xE0 => {
+                        0x3A => {
                             cursor += 1;
                             yystate = 23;
-                            continue 'yyl;
-                        }
-                        0xE1..=0xEC | 0xEE..=0xEF => {
-                            cursor += 1;
-                            yystate = 24;
-                            continue 'yyl;
-                        }
-                        0xED => {
-                            cursor += 1;
-                            yystate = 25;
-                            continue 'yyl;
-                        }
-                        0xF0 => {
-                            cursor += 1;
-                            yystate = 26;
-                            continue 'yyl;
-                        }
-                        0xF1..=0xF3 => {
-                            cursor += 1;
-                            yystate = 27;
-                            continue 'yyl;
-                        }
-                        0xF4 => {
-                            cursor += 1;
-                            yystate = 28;
                             continue 'yyl;
                         }
                         _ => {
@@ -213,18 +195,9 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                     }
                 }
                 5 => {
-                    return token(TokenKind::String, s, cursor, loc);
+                    return token(TokenKind::Symbol, s, cursor, loc);
                 }
                 6 => {
-                    return token(TokenKind::Quote, s, cursor, loc);
-                }
-                7 => {
-                    return token(TokenKind::ListStart, s, cursor, loc);
-                }
-                8 => {
-                    return token(TokenKind::ListEnd, s, cursor, loc);
-                }
-                9 => {
                     yyaccept = 1;
                     marker = cursor;
                     yych = unsafe {
@@ -235,31 +208,98 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x2A | 0x2D..=0x2E | 0x30..=0x39 | 0x41..=0x5A | 0x5F | 0x61..=0x7A => {
+                        0x01..=0x21 | 0x23..=0x5B | 0x5D..=0x7F => {
                             cursor += 1;
-                            yystate = 9;
+                            yystate = 6;
                             continue 'yyl;
                         }
-                        0x2F => {
+                        0x22 => {
+                            cursor += 1;
+                            yystate = 24;
+                            continue 'yyl;
+                        }
+                        0x5C => {
+                            cursor += 1;
+                            yystate = 25;
+                            continue 'yyl;
+                        }
+                        0xC2..=0xDF => {
+                            cursor += 1;
+                            yystate = 26;
+                            continue 'yyl;
+                        }
+                        0xE0 => {
+                            cursor += 1;
+                            yystate = 27;
+                            continue 'yyl;
+                        }
+                        0xE1..=0xEC | 0xEE..=0xEF => {
+                            cursor += 1;
+                            yystate = 28;
+                            continue 'yyl;
+                        }
+                        0xED => {
                             cursor += 1;
                             yystate = 29;
                             continue 'yyl;
                         }
-                        0x3A => {
+                        0xF0 => {
                             cursor += 1;
                             yystate = 30;
                             continue 'yyl;
                         }
+                        0xF1..=0xF3 => {
+                            cursor += 1;
+                            yystate = 31;
+                            continue 'yyl;
+                        }
+                        0xF4 => {
+                            cursor += 1;
+                            yystate = 32;
+                            continue 'yyl;
+                        }
                         _ => {
-                            yystate = 10;
+                            yystate = 7;
                             continue 'yyl;
                         }
                     }
                 }
+                7 => {
+                    return token(TokenKind::String, s, cursor, loc);
+                }
+                8 => {
+                    return token(TokenKind::Quote, s, cursor, loc);
+                }
+                9 => {
+                    return token(TokenKind::ListStart, s, cursor, loc);
+                }
                 10 => {
-                    return token(TokenKind::Symbol, s, cursor, loc);
+                    return token(TokenKind::ListEnd, s, cursor, loc);
                 }
                 11 => {
+                    yych = unsafe {
+                        if cursor < len {
+                            *s.get_unchecked(cursor)
+                        } else {
+                            0
+                        }
+                    };
+                    match yych {
+                        0x3A => {
+                            cursor += 1;
+                            yystate = 33;
+                            continue 'yyl;
+                        }
+                        _ => {
+                            yystate = 12;
+                            continue 'yyl;
+                        }
+                    }
+                }
+                12 => {
+                    return token(TokenKind::Symbol, s, cursor, loc);
+                }
+                13 => {
                     yyaccept = 2;
                     marker = cursor;
                     yych = unsafe {
@@ -272,19 +312,19 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                     match yych {
                         0x78 => {
                             cursor += 1;
-                            yystate = 32;
+                            yystate = 35;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 14;
+                            yystate = 16;
                             continue 'yyl;
                         }
                     }
                 }
-                12 => {
+                14 => {
                     return token(TokenKind::Number, s, cursor, loc);
                 }
-                13 => {
+                15 => {
                     yyaccept = 2;
                     marker = cursor;
                     yych = unsafe {
@@ -294,26 +334,26 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                             0
                         }
                     };
-                    yystate = 14;
+                    yystate = 16;
                     continue 'yyl;
                 }
-                14 => match yych {
+                16 => match yych {
                     0x2E => {
                         cursor += 1;
-                        yystate = 31;
+                        yystate = 34;
                         continue 'yyl;
                     }
                     0x30..=0x39 | 0x5F => {
                         cursor += 1;
-                        yystate = 13;
+                        yystate = 15;
                         continue 'yyl;
                     }
                     _ => {
-                        yystate = 12;
+                        yystate = 14;
                         continue 'yyl;
                     }
                 },
-                15 => {
+                17 => {
                     yyaccept = 3;
                     marker = cursor;
                     yych = unsafe {
@@ -326,64 +366,60 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                     match yych {
                         0x01..=0x09 | 0x0B..=0x0C | 0x0E..=0x7F => {
                             cursor += 1;
-                            yystate = 15;
+                            yystate = 17;
                             continue 'yyl;
                         }
                         0xC2..=0xDF => {
                             cursor += 1;
-                            yystate = 33;
+                            yystate = 36;
                             continue 'yyl;
                         }
                         0xE0 => {
                             cursor += 1;
-                            yystate = 34;
+                            yystate = 37;
                             continue 'yyl;
                         }
                         0xE1..=0xEC | 0xEE..=0xEF => {
                             cursor += 1;
-                            yystate = 35;
+                            yystate = 38;
                             continue 'yyl;
                         }
                         0xED => {
                             cursor += 1;
-                            yystate = 36;
+                            yystate = 39;
                             continue 'yyl;
                         }
                         0xF0 => {
                             cursor += 1;
-                            yystate = 37;
+                            yystate = 40;
                             continue 'yyl;
                         }
                         0xF1..=0xF3 => {
                             cursor += 1;
-                            yystate = 38;
+                            yystate = 41;
                             continue 'yyl;
                         }
                         0xF4 => {
                             cursor += 1;
-                            yystate = 39;
+                            yystate = 42;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 16;
+                            yystate = 18;
                             continue 'yyl;
                         }
                     }
                 }
-                16 => {
+                18 => {
                     return skip(s, cursor, loc);
                 }
-                17 => {
+                19 => {
                     return token(TokenKind::VecStart, s, cursor, loc);
                 }
-                18 => {
+                20 => {
                     return token(TokenKind::VecEnd, s, cursor, loc);
                 }
-                19 => {
-                    yystate = 5;
-                    continue 'yyl;
-                }
-                20 => {
+                21 => {
                     yych = unsafe {
                         if cursor < len {
                             *s.get_unchecked(cursor)
@@ -392,18 +428,24 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x22 | 0x5C | 0x6E | 0x72 | 0x74 => {
+                        0x21
+                        | 0x2A..=0x2B
+                        | 0x2D
+                        | 0x3C..=0x3E
+                        | 0x41..=0x5A
+                        | 0x5F
+                        | 0x61..=0x7A => {
                             cursor += 1;
-                            yystate = 4;
+                            yystate = 43;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
                 }
-                21 => {
+                22 => {
                     cursor = marker;
                     match yyaccept {
                         0 => {
@@ -411,78 +453,25 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                             continue 'yyl;
                         }
                         1 => {
-                            yystate = 10;
+                            yystate = 7;
                             continue 'yyl;
                         }
                         2 => {
-                            yystate = 12;
+                            yystate = 14;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 16;
-                            continue 'yyl;
-                        }
-                    }
-                }
-                22 => {
-                    yych = unsafe {
-                        if cursor < len {
-                            *s.get_unchecked(cursor)
-                        } else {
-                            0
-                        }
-                    };
-                    match yych {
-                        0x80..=0xBF => {
-                            cursor += 1;
-                            yystate = 4;
-                            continue 'yyl;
-                        }
-                        _ => {
-                            yystate = 21;
+                            yystate = 18;
                             continue 'yyl;
                         }
                     }
                 }
                 23 => {
-                    yych = unsafe {
-                        if cursor < len {
-                            *s.get_unchecked(cursor)
-                        } else {
-                            0
-                        }
-                    };
-                    match yych {
-                        0xA0..=0xBF => {
-                            cursor += 1;
-                            yystate = 22;
-                            continue 'yyl;
-                        }
-                        _ => {
-                            yystate = 21;
-                            continue 'yyl;
-                        }
-                    }
+                    return token(TokenKind::SymbolColon, s, cursor, loc);
                 }
                 24 => {
-                    yych = unsafe {
-                        if cursor < len {
-                            *s.get_unchecked(cursor)
-                        } else {
-                            0
-                        }
-                    };
-                    match yych {
-                        0x80..=0xBF => {
-                            cursor += 1;
-                            yystate = 22;
-                            continue 'yyl;
-                        }
-                        _ => {
-                            yystate = 21;
-                            continue 'yyl;
-                        }
-                    }
+                    yystate = 7;
+                    continue 'yyl;
                 }
                 25 => {
                     yych = unsafe {
@@ -493,13 +482,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0x9F => {
+                        0x22 | 0x5C | 0x6E | 0x72 | 0x74 => {
                             cursor += 1;
-                            yystate = 22;
+                            yystate = 6;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -513,13 +502,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x90..=0xBF => {
+                        0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 24;
+                            yystate = 6;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -533,13 +522,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0xBF => {
+                        0xA0..=0xBF => {
                             cursor += 1;
-                            yystate = 24;
+                            yystate = 26;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -553,13 +542,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0x8F => {
+                        0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 24;
+                            yystate = 26;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -573,19 +562,36 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x2A | 0x2D | 0x41..=0x5A | 0x5F | 0x61..=0x7A => {
+                        0x80..=0x9F => {
                             cursor += 1;
-                            yystate = 40;
+                            yystate = 26;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
                 }
                 30 => {
-                    return token(TokenKind::SymbolColon, s, cursor, loc);
+                    yych = unsafe {
+                        if cursor < len {
+                            *s.get_unchecked(cursor)
+                        } else {
+                            0
+                        }
+                    };
+                    match yych {
+                        0x90..=0xBF => {
+                            cursor += 1;
+                            yystate = 28;
+                            continue 'yyl;
+                        }
+                        _ => {
+                            yystate = 22;
+                            continue 'yyl;
+                        }
+                    }
                 }
                 31 => {
                     yych = unsafe {
@@ -596,13 +602,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x30..=0x39 | 0x5F => {
+                        0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 41;
+                            yystate = 28;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -616,36 +622,19 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x30..=0x39 | 0x41..=0x46 | 0x5F | 0x61..=0x66 => {
+                        0x80..=0x8F => {
                             cursor += 1;
-                            yystate = 42;
+                            yystate = 28;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
                 }
                 33 => {
-                    yych = unsafe {
-                        if cursor < len {
-                            *s.get_unchecked(cursor)
-                        } else {
-                            0
-                        }
-                    };
-                    match yych {
-                        0x80..=0xBF => {
-                            cursor += 1;
-                            yystate = 15;
-                            continue 'yyl;
-                        }
-                        _ => {
-                            yystate = 21;
-                            continue 'yyl;
-                        }
-                    }
+                    return token(TokenKind::SymbolColon, s, cursor, loc);
                 }
                 34 => {
                     yych = unsafe {
@@ -656,13 +645,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0xA0..=0xBF => {
+                        0x30..=0x39 | 0x5F => {
                             cursor += 1;
-                            yystate = 33;
+                            yystate = 44;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -676,13 +665,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0xBF => {
+                        0x30..=0x39 | 0x41..=0x46 | 0x5F | 0x61..=0x66 => {
                             cursor += 1;
-                            yystate = 33;
+                            yystate = 45;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -696,13 +685,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0x9F => {
+                        0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 33;
+                            yystate = 17;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -716,13 +705,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x90..=0xBF => {
+                        0xA0..=0xBF => {
                             cursor += 1;
-                            yystate = 35;
+                            yystate = 36;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -738,11 +727,11 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                     match yych {
                         0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 35;
+                            yystate = 36;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -756,13 +745,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x80..=0x8F => {
+                        0x80..=0x9F => {
                             cursor += 1;
-                            yystate = 35;
+                            yystate = 36;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 21;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -776,18 +765,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x2A | 0x2D..=0x2E | 0x30..=0x39 | 0x41..=0x5A | 0x5F | 0x61..=0x7A => {
+                        0x90..=0xBF => {
                             cursor += 1;
-                            yystate = 40;
-                            continue 'yyl;
-                        }
-                        0x3A => {
-                            cursor += 1;
-                            yystate = 30;
+                            yystate = 38;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 10;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -801,13 +785,13 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x30..=0x39 | 0x5F => {
+                        0x80..=0xBF => {
                             cursor += 1;
-                            yystate = 41;
+                            yystate = 38;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 12;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
@@ -821,18 +805,90 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
                         }
                     };
                     match yych {
-                        0x30..=0x39 | 0x41..=0x46 | 0x5F | 0x61..=0x66 => {
+                        0x80..=0x8F => {
                             cursor += 1;
-                            yystate = 42;
+                            yystate = 38;
                             continue 'yyl;
                         }
                         _ => {
-                            yystate = 43;
+                            yystate = 22;
                             continue 'yyl;
                         }
                     }
                 }
                 43 => {
+                    yych = unsafe {
+                        if cursor < len {
+                            *s.get_unchecked(cursor)
+                        } else {
+                            0
+                        }
+                    };
+                    match yych {
+                        0x21
+                        | 0x2A..=0x2B
+                        | 0x2D..=0x2E
+                        | 0x30..=0x39
+                        | 0x3C..=0x3E
+                        | 0x41..=0x5A
+                        | 0x5F
+                        | 0x61..=0x7A => {
+                            cursor += 1;
+                            yystate = 43;
+                            continue 'yyl;
+                        }
+                        0x3A => {
+                            cursor += 1;
+                            yystate = 23;
+                            continue 'yyl;
+                        }
+                        _ => {
+                            yystate = 5;
+                            continue 'yyl;
+                        }
+                    }
+                }
+                44 => {
+                    yych = unsafe {
+                        if cursor < len {
+                            *s.get_unchecked(cursor)
+                        } else {
+                            0
+                        }
+                    };
+                    match yych {
+                        0x30..=0x39 | 0x5F => {
+                            cursor += 1;
+                            yystate = 44;
+                            continue 'yyl;
+                        }
+                        _ => {
+                            yystate = 14;
+                            continue 'yyl;
+                        }
+                    }
+                }
+                45 => {
+                    yych = unsafe {
+                        if cursor < len {
+                            *s.get_unchecked(cursor)
+                        } else {
+                            0
+                        }
+                    };
+                    match yych {
+                        0x30..=0x39 | 0x41..=0x46 | 0x5F | 0x61..=0x66 => {
+                            cursor += 1;
+                            yystate = 45;
+                            continue 'yyl;
+                        }
+                        _ => {
+                            yystate = 46;
+                            continue 'yyl;
+                        }
+                    }
+                }
+                46 => {
                     return token(TokenKind::Number, s, cursor, loc);
                 }
                 _ => {

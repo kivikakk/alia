@@ -71,8 +71,14 @@ pub(super) fn lex_one(s: &[u8], loc: Loc) -> Token {
 
     [ \t\r\n]+ { return skip(s, cursor, loc); }
 
-    [a-zA-Z*_-][a-zA-Z0-9*_.-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_.-]*)? ":" { return token(TokenKind::SymbolColon, s, cursor, loc); }
-    [a-zA-Z*_-][a-zA-Z0-9*_.-]* ("/" [a-zA-Z*_-][a-zA-Z0-9*_.-]*)? { return token(TokenKind::Symbol, s, cursor, loc); }
+    symchar = [a-zA-Z*_<>!=+-];
+    symchartail = symchar | [0-9.];
+
+    "/:" { return token(TokenKind::SymbolColon, s, cursor, loc); }
+    "/" { return token(TokenKind::Symbol, s, cursor, loc); }
+
+    symchar symchartail* ("/" symchar symchartail*)? ":" { return token(TokenKind::SymbolColon, s, cursor, loc); }
+    symchar symchartail* ("/" symchar symchartail*)? { return token(TokenKind::Symbol, s, cursor, loc); }
 
     "0x" [0-9a-fA-F_]+ { return token(TokenKind::Number, s, cursor, loc); }
     [0-9][0-9_]* ("." [0-9_]+)? { return token(TokenKind::Number, s, cursor, loc); }

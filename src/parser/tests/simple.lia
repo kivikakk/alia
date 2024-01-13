@@ -6,6 +6,15 @@ ab12
 a/b
 Kin
 kin.connect
+<
+>=
+!=
+=
+==
++
+/
+*
+-
 
 :(
 a/b/c
