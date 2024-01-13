@@ -1,3 +1,4 @@
+mod compiler;
 #[cfg(feature = "lsp")]
 mod lsp;
 mod parser;

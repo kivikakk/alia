@@ -10,10 +10,9 @@ use std::str;
 pub(crate) use self::document::Document;
 pub(crate) use self::error::{Error, ErrorKind};
 pub(crate) use self::loc::{Loc, Range};
-pub(crate) use self::node::Node;
+pub(crate) use self::node::{Node, NodeValue};
 
 use self::lexer::{lex_one, Token, TokenKind};
-use self::node::NodeValue;
 
 struct Parser {
     stack: Vec<PE>,
@@ -208,7 +207,9 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
 }
 
 fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {
-    let s = unsafe { str::from_utf8_unchecked(s) }.to_string();
+    let s = str::from_utf8(s)
+        .expect("source should be valid utf-8")
+        .to_string();
     if s.ends_with(".") {
         Err(parse_error(ErrorKind::Symbol, range))
     } else {
@@ -217,7 +218,7 @@ fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {
 }
 
 fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> {
-    let s = unsafe { str::from_utf8_unchecked(s) };
+    let s = str::from_utf8(s).expect("source should be valid utf-8");
     let s = s.replace("_", "");
     if s.contains('.') {
         let f: f64 = s

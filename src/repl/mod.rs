@@ -2,12 +2,16 @@ use std::error::Error;
 
 use rustyline::{error::ReadlineError, DefaultEditor};
 
+use crate::compiler::compile_one;
 use crate::parser::{self, Node};
+use crate::vm::Vm;
 
 const HISTORY_FILE: &str = ".alia_history";
 
 pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>> {
     println!("alia repl");
+
+    let mut vm = Vm::new();
 
     let mut rl = DefaultEditor::new()?;
     _ = rl.load_history(HISTORY_FILE);
@@ -22,8 +26,13 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                 match full.parse::<Node>() {
                     Ok(node) => {
                         _ = rl.add_history_entry(&full);
-                        println!("{node}");
                         acc.clear();
+                        let code = compile_one(node)?;
+                        hexdump::hexdump(&code);
+                        let mut stack = vm.exec(&code);
+                        while let Some(val) = stack.pop() {
+                            eprintln!("{}", val.format(&vm));
+                        }
                     }
                     Err(parser::Error {
                         kind: parser::ErrorKind::Unfinished,
