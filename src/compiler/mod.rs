@@ -1,6 +1,7 @@
 mod error;
 
 pub(crate) use error::Error;
+use num_traits::ToBytes;
 
 use crate::parser::{self, Document, Node, NodeValue};
 use crate::vm::Op;
@@ -31,14 +32,14 @@ impl Compiler {
         Ok(())
     }
 
-    fn usize(&mut self, u: usize) -> Result<(), Error> {
+    fn n<T: ToBytes<Bytes = [u8; 8]>>(&mut self, u: T) -> Result<(), Error> {
         self.out.extend_from_slice(&u.to_le_bytes());
         Ok(())
     }
 
     fn bytes<S: AsRef<[u8]>>(&mut self, s: S) -> Result<(), Error> {
         let s = s.as_ref();
-        self.usize(s.len())?;
+        self.n(s.len())?;
         self.out.extend_from_slice(s);
         Ok(())
     }
@@ -50,9 +51,21 @@ impl Compiler {
                 self.bytes(&s)?;
                 Ok(())
             }
-            NodeValue::Integer(i) => todo!(),
-            NodeValue::Float(f) => todo!(),
-            NodeValue::String(s) => todo!(),
+            NodeValue::Integer(i) => {
+                self.op(Op::ImmediateInteger)?;
+                self.n(*i)?;
+                Ok(())
+            }
+            NodeValue::Float(f) => {
+                self.op(Op::ImmediateFloat)?;
+                self.n(*f)?;
+                Ok(())
+            }
+            NodeValue::String(s) => {
+                self.op(Op::ImmediateString)?;
+                self.bytes(&s)?;
+                Ok(())
+            }
             NodeValue::List(ns) => todo!(),
             NodeValue::Vec(ns) => todo!(),
         }
