@@ -9,6 +9,7 @@ use crate::vm::Op;
 pub(crate) fn compile_one(n: &Node) -> Result<Vec<u8>, Error> {
     let mut c = Compiler::new();
     c.node(n)?;
+    c.eval()?;
     Ok(c.out)
 }
 
@@ -77,5 +78,10 @@ impl Compiler {
                 Ok(())
             }
         }
+    }
+
+    fn eval(&mut self) -> Result<(), Error> {
+        self.op(Op::Eval)?;
+        Ok(())
     }
 }

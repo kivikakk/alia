@@ -34,7 +34,8 @@ impl Vm {
                 Op::Nop => {}
                 Op::ImmediateSymbol => {
                     let len = Self::n::<usize>(code, &mut ip);
-                    self.intern(&code[ip..ip + len]);
+                    let s = self.intern(&code[ip..ip + len]);
+                    self.stack.push(Val::Symbol(s));
                     ip += len;
                 }
                 Op::ImmediateInteger => {
@@ -64,7 +65,8 @@ impl Vm {
                 }
                 Op::Eval => {
                     let form = self.stack.pop().expect("stack should not be empty");
-                    self.stack.push(Self::eval(form));
+                    let result = self.eval(form);
+                    self.stack.push(result);
                 }
             }
         }
@@ -72,13 +74,27 @@ impl Vm {
         mem::take(&mut self.stack)
     }
 
-    fn eval(form: Val) -> Val {
+    fn eval(&mut self, form: Val) -> Val {
         match form {
             Val::Symbol(s) => {
-                // resolve
+                // TODO: resolve
+                if s == self.interns("true") || s == self.interns("false") {
+                    return form;
+                }
+                Val::Symbol(self.interns("nyonk"))
+            }
+            Val::Integer(_) | Val::Float(_) | Val::String(_) => {
+                // primitives evaluate to themselves
                 form
             }
-            Val::Integer(_) | Val::Float(_) | Val::String(_) => form,
+            Val::List(ref _ns) => {
+                // TODO: call
+                form
+            }
+            Val::Vec(ref _ns) => {
+                // TODO: cons
+                form
+            }
         }
     }
 
@@ -88,8 +104,11 @@ impl Vm {
         u
     }
 
-    fn intern(&mut self, b: &[u8]) {
-        self.stack.push(Val::Symbol(self.interns.intern(b)))
+    fn intern(&mut self, b: &[u8]) -> InternedSymbol {
+        self.interns.intern(b)
+    }
+    fn interns(&mut self, s: &str) -> InternedSymbol {
+        self.interns.intern(s.as_bytes())
     }
 }
 
