@@ -10,4 +10,5 @@ pub(crate) enum Op {
     ImmediateString = 4,
     ConsList = 5,
     ConsVec = 6,
+    Eval = 7,
 }

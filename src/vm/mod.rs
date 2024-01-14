@@ -62,10 +62,24 @@ impl Vm {
                     let v = self.stack.split_off(self.stack.len() - n);
                     self.stack.push(Val::Vec(v));
                 }
+                Op::Eval => {
+                    let form = self.stack.pop().expect("stack should not be empty");
+                    self.stack.push(Self::eval(form));
+                }
             }
         }
 
         mem::take(&mut self.stack)
+    }
+
+    fn eval(form: Val) -> Val {
+        match form {
+            Val::Symbol(s) => {
+                // resolve
+                form
+            }
+            Val::Integer(_) | Val::Float(_) | Val::String(_) => form,
+        }
     }
 
     fn n<T: FromBytes<Bytes = [u8; 8]>>(code: &[u8], ip: &mut usize) -> T {
