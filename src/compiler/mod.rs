@@ -3,16 +3,10 @@ mod error;
 pub(crate) use error::Error;
 use num_traits::ToBytes;
 
-use crate::parser::{self, Document, Node, NodeValue};
+use crate::parser::{Node, NodeValue};
 use crate::vm::Op;
 
-pub(crate) fn compile(s: &str) -> Result<Vec<u8>, parser::Error> {
-    let doc: Document = s.parse()?;
-
-    Ok(vec![])
-}
-
-pub(crate) fn compile_one(n: Node) -> Result<Vec<u8>, Error> {
+pub(crate) fn compile_one(n: &Node) -> Result<Vec<u8>, Error> {
     let mut c = Compiler::new();
     c.node(n)?;
     Ok(c.out)
@@ -44,7 +38,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn node(&mut self, n: Node) -> Result<(), Error> {
+    fn node(&mut self, n: &Node) -> Result<(), Error> {
         match &n.value {
             NodeValue::Symbol(s) => {
                 self.op(Op::ImmediateSymbol)?;
@@ -66,8 +60,22 @@ impl Compiler {
                 self.bytes(&s)?;
                 Ok(())
             }
-            NodeValue::List(ns) => todo!(),
-            NodeValue::Vec(ns) => todo!(),
+            NodeValue::List(ns) => {
+                for n in ns {
+                    self.node(n)?;
+                }
+                self.op(Op::ConsList)?;
+                self.n(ns.len())?;
+                Ok(())
+            }
+            NodeValue::Vec(ns) => {
+                for n in ns {
+                    self.node(n)?;
+                }
+                self.op(Op::ConsVec)?;
+                self.n(ns.len())?;
+                Ok(())
+            }
         }
     }
 }

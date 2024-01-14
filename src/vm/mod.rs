@@ -2,6 +2,7 @@ mod interns;
 mod ops;
 
 use num_traits::{FromBytes, FromPrimitive};
+use std::fmt::Write;
 use std::{mem, str};
 
 use self::interns::{InternedSymbol, Interns};
@@ -48,11 +49,19 @@ impl Vm {
                     let n = Self::n::<usize>(code, &mut ip);
                     let str = String::from_utf8(code[ip..ip + n].to_vec())
                         .expect("should be valid utf-8");
-                    eprintln!("n is {n:?}, str is {str:?}");
                     self.stack.push(Val::String(str));
                     ip += n;
                 }
-                _ => todo!(),
+                Op::ConsList => {
+                    let n = Self::n::<usize>(code, &mut ip);
+                    let v = self.stack.split_off(self.stack.len() - n);
+                    self.stack.push(Val::List(v));
+                }
+                Op::ConsVec => {
+                    let n = Self::n::<usize>(code, &mut ip);
+                    let v = self.stack.split_off(self.stack.len() - n);
+                    self.stack.push(Val::Vec(v));
+                }
             }
         }
 
@@ -88,7 +97,34 @@ impl Val {
             Val::Integer(i) => format!("{}", i),
             Val::Float(f) => format!("{}", f), // XXX
             Val::String(s) => s.to_string(),
-            _ => todo!(),
+            Val::List(ns) => {
+                let mut s = "(".to_string();
+                let mut first = true;
+                for n in ns {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(s, " ").unwrap();
+                    }
+                    write!(s, "{}", n.format(vm)).unwrap();
+                }
+                write!(s, ")").unwrap();
+                s
+            }
+            Val::Vec(ns) => {
+                let mut s = "[".to_string();
+                let mut first = true;
+                for n in ns {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(s, " ").unwrap();
+                    }
+                    write!(s, "{}", n.format(vm)).unwrap();
+                }
+                write!(s, "]").unwrap();
+                s
+            }
         }
     }
 }

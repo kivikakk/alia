@@ -8,4 +8,6 @@ pub(crate) enum Op {
     ImmediateInteger = 2,
     ImmediateFloat = 3,
     ImmediateString = 4,
+    ConsList = 5,
+    ConsVec = 6,
 }

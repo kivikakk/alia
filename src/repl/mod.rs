@@ -27,7 +27,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                     Ok(node) => {
                         _ = rl.add_history_entry(&full);
                         acc.clear();
-                        let code = compile_one(node)?;
+                        let code = compile_one(&node)?;
                         hexdump::hexdump(&code);
                         let mut stack = vm.exec(&code);
                         while let Some(val) = stack.pop() {
