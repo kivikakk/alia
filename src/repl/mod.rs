@@ -29,7 +29,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         acc.clear();
                         let code = compile_one(&node)?;
                         hexdump::hexdump(&code);
-                        let mut stack = vm.exec(&code);
+                        let mut stack = vm.run_to_completion(code);
                         while let Some(val) = stack.pop() {
                             eprintln!("{}", val.format(&vm));
                         }

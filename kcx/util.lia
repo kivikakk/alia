@@ -1,0 +1,5 @@
+(mod kcx.util)
+
+(defn p [s: str] -> ()
+	"Um sure"
+	(builtins/print s))

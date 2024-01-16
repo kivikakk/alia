@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, PartialEq)]
+// this Debug impl isn't much help.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct InternedSymbol(usize);
 
 pub(super) struct Interns {
@@ -8,12 +9,20 @@ pub(super) struct Interns {
     sym_to_ix: HashMap<Vec<u8>, usize>,
 }
 
+pub(super) const TRUE: InternedSymbol = InternedSymbol(1);
+pub(super) const FALSE: InternedSymbol = InternedSymbol(2);
+
 impl Interns {
     pub(super) fn new() -> Interns {
-        Interns {
+        let mut i = Interns {
             ix_to_sym: vec![],
             sym_to_ix: HashMap::new(),
-        }
+        };
+        let t = i.intern("true");
+        assert_eq!(TRUE, t);
+        let f = i.intern("false");
+        assert_eq!(FALSE, f);
+        i
     }
 
     pub(super) fn intern<S: AsRef<[u8]>>(&mut self, s: S) -> InternedSymbol {
