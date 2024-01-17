@@ -25,7 +25,7 @@ impl Proc {
         }
     }
 
-    pub(crate) fn step(&mut self, interns: &mut Interns) -> bool {
+    pub(crate) fn step(&mut self, interns: &mut Interns) -> Step {
         let op = Op::from_u8(self.code[self.ip])
             .ok_or_else(|| format!("should be valid opcode, was {}", self.code[self.ip]))
             .unwrap();
@@ -71,7 +71,11 @@ impl Proc {
             }
         }
 
-        self.ip == self.code.len()
+        if self.ip < self.code.len() {
+            Step::Running
+        } else {
+            Step::Finished
+        }
     }
 
     fn eval(&mut self, interns: &mut Interns, form: Val) -> Val {
@@ -103,4 +107,9 @@ impl Proc {
         self.ip += 8;
         u
     }
+}
+
+pub(super) enum Step {
+    Running,
+    Finished,
 }

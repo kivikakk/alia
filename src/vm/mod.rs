@@ -11,7 +11,7 @@ pub(crate) use self::ops::Op;
 
 use self::interns::{InternedSymbol, Interns};
 use self::mark::Mark;
-use self::proc::{Pid, Proc};
+use self::proc::{Pid, Proc, Step};
 use self::val::Val;
 
 pub(crate) struct Vm {
@@ -55,11 +55,12 @@ impl Vm {
     fn step_all(&mut self) {
         self.procs.retain_mut(|p| {
             // we'll probably have to give more soon,
-            if p.step(&mut self.interns) {
-                self.completions.insert(p.pid, mem::take(&mut p.stack));
-                false
-            } else {
-                true
+            match p.step(&mut self.interns) {
+                Step::Running => true,
+                Step::Finished => {
+                    self.completions.insert(p.pid, mem::take(&mut p.stack));
+                    false
+                }
             }
         })
     }
