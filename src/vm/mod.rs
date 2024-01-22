@@ -54,15 +54,24 @@ impl Vm {
     }
 
     fn step_all(&mut self) {
-        self.procs.retain_mut(|p| {
-            // we'll probably have to give more soon,
-            match p.step(&mut self.interns) {
-                Step::Running => true,
-                Step::Finished => {
-                    self.completions.insert(p.pid, mem::take(&mut p.stack));
-                    false
+        let mut i = 0;
+        while i < self.procs.len() {
+            let retain = {
+                let p = &mut self.procs[i];
+
+                match p.step(self) {
+                    Step::Running => true,
+                    Step::Finished => {
+                        self.completions.insert(p.pid, mem::take(&mut p.stack));
+                        false
+                    }
                 }
+            };
+            if retain {
+                i += 1;
+            } else {
+                self.procs.remove(i);
             }
-        })
+        }
     }
 }

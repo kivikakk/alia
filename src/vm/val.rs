@@ -3,6 +3,7 @@ use std::str;
 
 use super::{InternedSymbol, Interns};
 
+#[derive(Clone)]
 pub(crate) enum Val {
     Symbol(InternedSymbol),
     Integer(i64),
@@ -13,6 +14,7 @@ pub(crate) enum Val {
     Builtin(BuiltinVal),
 }
 
+#[derive(Clone)]
 pub(crate) struct BuiltinVal {
     pub(crate) name: String,
     pub(crate) code: Builtin,
@@ -69,6 +71,26 @@ impl From<InternedSymbol> for Val {
         Val::Symbol(value)
     }
 }
+
+impl From<i64> for Val {
+    fn from(value: i64) -> Self {
+        Val::Integer(value)
+    }
+}
+
+impl From<f64> for Val {
+    fn from(value: f64) -> Self {
+        Val::Float(value)
+    }
+}
+
+impl From<String> for Val {
+    fn from(value: String) -> Self {
+        Val::String(value)
+    }
+}
+
+// XXX: List/Vec are undistinguished
 
 impl From<(&str, fn(&mut Interns, Val) -> Val)> for Val {
     fn from(value: (&str, fn(&mut Interns, Val) -> Val)) -> Self {

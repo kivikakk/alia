@@ -1,6 +1,6 @@
 use num_traits::{FromBytes, FromPrimitive};
 
-use super::{interns, Interns, Op, Val};
+use super::{interns, Op, Val, Vm};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct Pid(pub(super) usize);
@@ -25,7 +25,7 @@ impl Proc {
         }
     }
 
-    pub(crate) fn step(&mut self, interns: &mut Interns) -> Step {
+    pub(crate) fn step(&mut self, vm: &mut Vm) -> Step {
         let op = Op::from_u8(self.code[self.ip])
             .ok_or_else(|| format!("should be valid opcode, was {}", self.code[self.ip]))
             .unwrap();
@@ -35,7 +35,7 @@ impl Proc {
             Op::Nop => {}
             Op::ImmediateSymbol => {
                 let len = self.n::<usize>();
-                let s = interns.intern(&self.code[self.ip..self.ip + len]);
+                let s = vm.interns.intern(&self.code[self.ip..self.ip + len]);
                 self.stack.push(Val::Symbol(s));
                 self.ip += len;
             }
@@ -66,7 +66,7 @@ impl Proc {
             }
             Op::Eval => {
                 let form = self.stack.pop().expect("stack should not be empty");
-                let result = self.eval(interns, form);
+                let result = self.eval(vm, &form);
                 self.stack.push(result);
             }
         }
@@ -78,30 +78,40 @@ impl Proc {
         }
     }
 
-    fn eval(&mut self, interns: &mut Interns, form: Val) -> Val {
+    // TODO: consider Cow<Val> here or something?  Moooooooooooooo
+    //                       _______________________________________
+    //   (__) __ (  )       /                                       \
+    //  _/  .   .   \_   --<  It may not be clear, but I am bovine.  >
+    // ( |    w     | )     \                                       /
+    //   ¯\________/ ¯       ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+    //
+    fn eval(&mut self, vm: &mut Vm, form: &Val) -> Val {
         match form {
-            Val::Symbol(s) => {
-                // TODO: resolve
+            &Val::Symbol(s) => {
+                // `true`/`false` evaluate to themselves
                 if s == interns::TRUE || s == interns::FALSE {
-                    return form;
+                    return form.clone();
                 }
-                Val::Symbol(interns.intern("nyonk".as_bytes()))
+                Val::Symbol(vm.interns.intern("nyonk".as_bytes()))
             }
             Val::Integer(_) | Val::Float(_) | Val::String(_) => {
                 // primitives evaluate to themselves
-                form
+                form.clone()
             }
-            Val::List(ref _ns) => {
+            Val::List(ref ns) => {
+                // empty cons evaluates to itself
+                if ns.is_empty() {
+                    return form.clone();
+                }
                 // TODO: call
-                form
+                form.clone()
             }
-            Val::Vec(ref _ns) => {
-                // TODO: cons
-                form
+            Val::Vec(ref ns) => {
+                Val::Vec(ns.into_iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>())
             }
             Val::Builtin(ref _bv) => {
                 // builtins evaluate to themselves
-                form
+                form.clone()
             }
         }
     }
