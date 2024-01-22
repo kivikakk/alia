@@ -92,6 +92,13 @@ impl Proc {
                 if s == interns::TRUE || s == interns::FALSE {
                     return form.clone();
                 }
+                // TODO/RESUME:
+                // We want to look up e.g. builtins/print.
+                // Right now this is one whole symbol, but interning the ns alongside
+                // makes no sense at all, especially since we might use altered names
+                // in places etc. etc.  a/x, .y/x, a.y.z/x are all possible.
+                // Separate the ns components from the rest, then we can do a lookup
+                // here without doing string munging in the VM (!).
                 match vm.modules.get(&s) {
                     Some(v) => Val::Module(v.clone()),
                     None => Val::Symbol(vm.interns.intern("TODO!".as_bytes())),

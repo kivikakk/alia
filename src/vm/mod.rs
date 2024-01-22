@@ -25,19 +25,18 @@ pub(crate) struct Vm {
 
 impl Vm {
     pub(crate) fn new() -> Self {
-        let mut modules = HashMap::new();
-        let mut interns = Interns::new();
-
-        modules.insert(
-            interns.intern("builtins"),
-            RefCell::new(Rc::new(Module::builtins(&mut interns))),
-        );
-
-        Vm {
-            modules,
-            interns,
+        let mut vm = Vm {
+            modules: HashMap::new(),
+            interns: Interns::new(),
             last_pid: Pid(0),
-        }
+        };
+
+        let builtins = Module::builtins(&mut vm);
+        vm.modules.insert(
+            vm.interns.intern("builtins"),
+            RefCell::new(Rc::new(builtins)),
+        );
+        vm
     }
 
     pub(crate) fn run_to_completion(&mut self, code: Vec<u8>) -> Vec<Val> {

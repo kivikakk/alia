@@ -1,9 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
-    interns::Interns,
     val::{Builtin, BuiltinVal},
-    InternedSymbol, Val,
+    InternedSymbol, Val, Vm,
 };
 
 #[derive(Clone)]
@@ -24,17 +23,17 @@ impl Module {
         }
     }
 
-    pub(super) fn builtins(is: &mut Interns) -> Module {
+    pub(super) fn builtins(vm: &mut Vm) -> Module {
         let mut m = Module::new("builtins".into());
         m.add_bind(
-            is.intern("print"),
+            vm.interns.intern("print"),
             Val::Builtin(BuiltinVal {
                 name: "print".into(),
                 code: super::builtins::print,
             }),
         );
         m.add_bind(
-            is.intern("pront"),
+            vm.interns.intern("pront"),
             ("pront", super::builtins::print as Builtin).into(),
         );
         m
