@@ -1,7 +1,8 @@
-use std::fmt::Write;
+use std::rc::Rc;
 use std::str;
+use std::{cell::RefCell, fmt::Write};
 
-use super::{InternedSymbol, Interns};
+use super::{module::Module, InternedSymbol, Interns};
 
 #[derive(Clone)]
 pub(crate) enum Val {
@@ -12,6 +13,7 @@ pub(crate) enum Val {
     List(Vec<Val>),
     Vec(Vec<Val>),
     Builtin(BuiltinVal),
+    Module(RefCell<Rc<Module>>),
 }
 
 #[derive(Clone)]
@@ -61,6 +63,10 @@ impl Val {
             }
             Val::Builtin(BuiltinVal { name, .. }) => {
                 format!("<builtin {name}>")
+            }
+            Val::Module(rmod) => {
+                let name = &rmod.borrow().name;
+                format!("<module {name}>")
             }
         }
     }

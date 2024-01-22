@@ -92,7 +92,10 @@ impl Proc {
                 if s == interns::TRUE || s == interns::FALSE {
                     return form.clone();
                 }
-                Val::Symbol(vm.interns.intern("nyonk".as_bytes()))
+                match vm.modules.get(&s) {
+                    Some(v) => Val::Module(v.clone()),
+                    None => Val::Symbol(vm.interns.intern("TODO!".as_bytes())),
+                }
             }
             Val::Integer(_) | Val::Float(_) | Val::String(_) => {
                 // primitives evaluate to themselves
@@ -109,8 +112,8 @@ impl Proc {
             Val::Vec(ref ns) => {
                 Val::Vec(ns.into_iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>())
             }
-            Val::Builtin(ref _bv) => {
-                // builtins evaluate to themselves
+            Val::Builtin(..) | Val::Module(..) => {
+                // builtins and modules evaluate to themselves
                 form.clone()
             }
         }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
     interns::Interns,
@@ -6,23 +6,26 @@ use super::{
     InternedSymbol, Val,
 };
 
-pub(super) struct Module {
+#[derive(Clone)]
+pub(crate) struct Module {
     // consts // fns // macros
     // ^--- these all occupy the same namespace!
-    submodules: HashMap<InternedSymbol, Module>,
+    pub(super) name: String,
+    submodules: HashMap<InternedSymbol, RefCell<Rc<Module>>>,
     binds: HashMap<InternedSymbol, Val>,
 }
 
 impl Module {
-    fn new() -> Self {
+    fn new(name: String) -> Self {
         Module {
+            name,
             submodules: HashMap::new(),
             binds: HashMap::new(),
         }
     }
 
     pub(super) fn builtins(is: &mut Interns) -> Module {
-        let mut m = Module::new();
+        let mut m = Module::new("builtins".into());
         m.add_bind(
             is.intern("print"),
             Val::Builtin(BuiltinVal {
