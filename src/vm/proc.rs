@@ -99,6 +99,10 @@ impl Proc {
                 // TODO: cons
                 form
             }
+            Val::Builtin(ref _bv) => {
+                // builtins evaluate to themselves
+                form
+            }
         }
     }
 

@@ -1,20 +1,20 @@
 (mod kcx
-  submods: ['util])
+     submods: ['util])
 
 (defn main [] -> u8
   "Lol hi okay! ^_^"
   (.util/p "Hiiiiii")
   1)
 
-; (lia/defrecord User
-;   [id:    (lia/opt lia/u64)
-;    login: lia/str])
+;; (lia/defrecord User
+;;   [id:    (lia/opt lia/u64)
+;;    login: lia/str])
 
-; (lia/defrecord User
-;   ['id    (lia/opt lia/u64)
-;    'login lia/str])
+;; (lia/defrecord User
+;;   ['id    (lia/opt lia/u64)
+;;    'login lia/str])
 
-; (lia/defnode [] ; root node
-;   "Hi! A node right now is just a page.")
+;; (lia/defnode [] ; root node
+;;   "Hi! A node right now is just a page.")
 
-; (lia/ev [lia.http lia.awa])
+;; (lia/ev [lia.http lia.awa])

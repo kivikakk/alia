@@ -1,5 +1,6 @@
+mod builtins;
 mod interns;
-mod mark;
+mod module;
 mod ops;
 mod proc;
 mod val;
@@ -10,13 +11,13 @@ use std::mem;
 pub(crate) use self::ops::Op;
 
 use self::interns::{InternedSymbol, Interns};
-use self::mark::Mark;
+use self::module::Module;
 use self::proc::{Pid, Proc, Step};
 use self::val::Val;
 
 pub(crate) struct Vm {
-    marks: HashMap<InternedSymbol, Mark>,
-    interns: Interns,
+    modules: HashMap<InternedSymbol, Module>,
+    pub(super) interns: Interns,
     procs: Vec<Proc>,
     last_pid: Pid,
     completions: HashMap<Pid, Vec<Val>>,
@@ -24,13 +25,13 @@ pub(crate) struct Vm {
 
 impl Vm {
     pub(crate) fn new() -> Self {
-        let mut marks = HashMap::new();
+        let mut modules = HashMap::new();
         let mut interns = Interns::new();
 
-        marks.insert(interns.intern("builtins"), Mark::builtins());
+        modules.insert(interns.intern("ns"), Module::builtins(&mut interns));
 
         Vm {
-            marks,
+            modules,
             interns,
             procs: vec![],
             last_pid: Pid(0),

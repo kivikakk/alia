@@ -4,7 +4,7 @@ use std::collections::HashMap;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct InternedSymbol(usize);
 
-pub(super) struct Interns {
+pub(crate) struct Interns {
     ix_to_sym: Vec<Vec<u8>>,
     sym_to_ix: HashMap<Vec<u8>, usize>,
 }
