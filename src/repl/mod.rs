@@ -12,15 +12,15 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
     println!("alia repl");
 
     let mut vm = Vm::new();
+    let mut active_module = vm.anonymous_module("*scratch*");
 
     let mut rl = DefaultEditor::new()?;
     _ = rl.load_history(HISTORY_FILE);
 
-    let active_ns = "*scratch*";
     let mut acc = String::new();
     loop {
         let promptchar = if acc.is_empty() { '>' } else { '*' };
-        match rl.readline(&format!("({active_ns}){promptchar} ")) {
+        match rl.readline(&format!("({}){promptchar} ", &active_module.borrow().name)) {
             Ok(line) => {
                 let full = acc.clone() + &line;
                 match full.parse::<Node>() {
@@ -29,7 +29,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         acc.clear();
                         let code = compile_one(&node)?;
                         hexdump::hexdump(&code);
-                        let mut stack = vm.run_to_completion(code);
+                        let mut stack = vm.run_to_completion(active_module.clone(), code);
                         while let Some(val) = stack.pop() {
                             eprintln!("{}", val.format(&vm.interns));
                         }

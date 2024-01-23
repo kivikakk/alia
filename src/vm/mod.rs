@@ -39,14 +39,33 @@ impl Vm {
         vm
     }
 
-    pub(crate) fn run_to_completion(&mut self, code: Vec<u8>) -> Vec<Val> {
-        let proc = self.schedule(code);
+    pub(crate) fn anonymous_module(&mut self, name: &str) -> RefCell<Rc<Module>> {
+        let mut module = Module::new(name.to_string());
+        module.refer(
+            self.modules
+                .get(&self.interns.intern("builtins"))
+                .unwrap()
+                .clone(),
+        );
+        RefCell::new(Rc::new(module))
+    }
+
+    pub(crate) fn run_to_completion(
+        &mut self,
+        module: RefCell<Rc<Module>>,
+        code: Vec<u8>,
+    ) -> Vec<Val> {
+        let proc = self.schedule(module, code);
         self.step_to_end(proc)
     }
 
-    fn schedule(&mut self, code: Vec<u8>) -> Proc {
+    pub(crate) fn lookup_module(&self, s: InternedSymbol) -> RefCell<Rc<Module>> {
+        self.modules.get(&s).unwrap().clone()
+    }
+
+    fn schedule(&mut self, module: RefCell<Rc<Module>>, code: Vec<u8>) -> Proc {
         self.last_pid = Pid(self.last_pid.0 + 1);
-        Proc::new(self.last_pid, code)
+        Proc::new(self.last_pid, module, code)
     }
 
     fn step_to_end(&mut self, mut proc: Proc) -> Vec<Val> {

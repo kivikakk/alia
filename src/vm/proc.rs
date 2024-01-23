@@ -1,6 +1,8 @@
+use std::{cell::RefCell, rc::Rc};
+
 use num_traits::{FromBytes, FromPrimitive};
 
-use super::{interns, Op, Val, Vm};
+use super::{Module, Op, Val, Vm};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct Pid(pub(super) usize);
@@ -10,15 +12,17 @@ pub(super) struct Proc {
     // stack
     // context??
     pub(super) pid: Pid,
+    pub(super) module: RefCell<Rc<Module>>,
     code: Vec<u8>,
     ip: usize,
     pub(super) stack: Vec<Val>,
 }
 
 impl Proc {
-    pub(super) fn new(pid: Pid, code: Vec<u8>) -> Proc {
+    pub(super) fn new(pid: Pid, module: RefCell<Rc<Module>>, code: Vec<u8>) -> Proc {
         Proc {
             pid,
+            module,
             code,
             ip: 0,
             stack: vec![],
@@ -99,23 +103,14 @@ impl Proc {
     //
     fn eval(&mut self, vm: &mut Vm, form: &Val) -> Val {
         match form {
-            &Val::Symbol(m, s) => {
-                // `true`/`false` evaluate to themselves
-                if m.is_none() && (s == interns::TRUE || s == interns::FALSE) {
-                    return form.clone();
-                }
-                // TODO/RESUME:
-                // We want to look up e.g. builtins/print.
-                // Right now this is one whole symbol, but interning the ns alongside
-                // makes no sense at all, especially since we might use altered names
-                // in places etc. etc.  a/x, .y/x, a.y.z/x are all possible.
-                // Separate the ns components from the rest, then we can do a lookup
-                // here without doing string munging in the VM (!).
-                match vm.modules.get(&s) {
-                    Some(v) => Val::Module(v.clone()),
-                    None => Val::Symbol(None, vm.interns.intern("TODO!".as_bytes())),
+            &Val::Symbol(None, s) => {
+                let self_module = self.module.borrow();
+                match self_module.lookup(vm, s) {
+                    Some(v) => v,
+                    None => Val::Symbol(None, vm.interns.intern("panic TODO!".as_bytes())),
                 }
             }
+            &Val::Symbol(Some(m), s) => todo!(),
             Val::Integer(_) | Val::Float(_) | Val::String(_) => {
                 // primitives evaluate to themselves
                 form.clone()
