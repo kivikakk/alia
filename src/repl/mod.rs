@@ -31,7 +31,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         hexdump::hexdump(&code);
                         let mut stack = vm.run_to_completion(active_module.clone(), code);
                         while let Some(val) = stack.pop() {
-                            eprintln!("{}", val.format(&vm.interns));
+                            eprintln!("{}", val.format(&vm));
                         }
                     }
                     Err(parser::Error {

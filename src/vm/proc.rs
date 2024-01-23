@@ -2,12 +2,12 @@ use std::{cell::RefCell, rc::Rc};
 
 use num_traits::{FromBytes, FromPrimitive};
 
-use super::{Module, Op, Val, Vm};
+use super::{val::BuiltinVal, Module, Op, Val, Vm};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct Pid(pub(super) usize);
 
-pub(super) struct Proc {
+pub(crate) struct Proc {
     // a reference to the vm? passed in on every call?
     // stack
     // context??
@@ -101,7 +101,7 @@ impl Proc {
     // ( |    w     | )     \                                       /
     //   ¯\________/ ¯       ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
     //
-    fn eval(&mut self, vm: &mut Vm, form: &Val) -> Val {
+    pub(super) fn eval(&mut self, vm: &mut Vm, form: &Val) -> Val {
         match form {
             &Val::Symbol(None, s) => {
                 let self_module = self.module.borrow();
@@ -126,12 +126,18 @@ impl Proc {
                 form.clone()
             }
             Val::List(ref ns) => {
-                // empty cons evaluates to itself
-                if ns.is_empty() {
-                    return form.clone();
+                let mut ns = ns.into_iter();
+                let head = match ns.next() {
+                    Some(e) => e,
+                    None => {
+                        // empty cons evaluates to itself
+                        return form.clone();
+                    }
+                };
+                match self.eval(vm, head) {
+                    Val::Builtin(BuiltinVal { code, .. }) => code(vm, self, ns.collect()),
+                    _ => panic!("can't call {}", head.format(vm)),
                 }
-                // TODO: call
-                form.clone()
             }
             Val::Vec(ref ns) => {
                 Val::Vec(ns.into_iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>())
@@ -150,7 +156,7 @@ impl Proc {
     }
 }
 
-pub(super) enum Step {
+pub(crate) enum Step {
     Running,
     Finished,
 }

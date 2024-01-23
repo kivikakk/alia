@@ -2,7 +2,9 @@ use std::rc::Rc;
 use std::str;
 use std::{cell::RefCell, fmt::Write};
 
-use super::{module::Module, InternedSymbol, Interns};
+use super::proc::Proc;
+use super::Vm;
+use super::{module::Module, InternedSymbol};
 
 #[derive(Clone)]
 pub(crate) enum Val {
@@ -22,18 +24,18 @@ pub(crate) struct BuiltinVal {
     pub(crate) code: Builtin,
 }
 
-pub(crate) type Builtin = fn(&mut Interns, Val) -> Val;
+pub(crate) type Builtin = fn(&mut Vm, &mut Proc, Vec<&Val>) -> Val;
 
 impl Val {
-    pub(crate) fn format(&self, interns: &Interns) -> String {
+    pub(crate) fn format(&self, vm: &Vm) -> String {
         match self {
-            &Val::Symbol(None, s) => str::from_utf8(interns.resolve(s))
+            &Val::Symbol(None, s) => str::from_utf8(vm.interns.resolve(s))
                 .expect("all symbols should be utf-8")
                 .to_string(),
             &Val::Symbol(Some(m), s) => format!(
                 "{}/{}",
-                str::from_utf8(interns.resolve(m)).expect("all symbol modules should be utf-8"),
-                str::from_utf8(interns.resolve(s)).expect("all symbols should be utf-8"),
+                str::from_utf8(vm.interns.resolve(m)).expect("all symbol modules should be utf-8"),
+                str::from_utf8(vm.interns.resolve(s)).expect("all symbols should be utf-8"),
             ),
             Val::Integer(i) => format!("{}", i),
             Val::Float(f) => format!("{}", f), // XXX doesn't roundtrip
@@ -47,7 +49,7 @@ impl Val {
                     } else {
                         write!(s, " ").unwrap();
                     }
-                    write!(s, "{}", n.format(interns)).unwrap();
+                    write!(s, "{}", n.format(vm)).unwrap();
                 }
                 write!(s, ")").unwrap();
                 s
@@ -61,7 +63,7 @@ impl Val {
                     } else {
                         write!(s, " ").unwrap();
                     }
-                    write!(s, "{}", n.format(interns)).unwrap();
+                    write!(s, "{}", n.format(vm)).unwrap();
                 }
                 write!(s, "]").unwrap();
                 s
@@ -115,8 +117,8 @@ impl From<String> for Val {
 
 // XXX: List/Vec are undistinguished
 
-impl From<(&str, fn(&mut Interns, Val) -> Val)> for Val {
-    fn from(value: (&str, fn(&mut Interns, Val) -> Val)) -> Self {
+impl From<(&str, Builtin)> for Val {
+    fn from(value: (&str, Builtin)) -> Self {
         Val::Builtin(BuiltinVal {
             name: value.0.into(),
             code: value.1,

@@ -32,7 +32,7 @@ impl Module {
             m.add_bind(sym, Val::Symbol(None, sym));
         }
         m.add_bind_builtin(vm, "print", super::builtins::print);
-        m.add_bind_builtin(vm, "pront", super::builtins::print);
+        m.add_bind_builtin(vm, "quote", super::builtins::quote);
         m
     }
 
@@ -75,7 +75,7 @@ impl Module {
         self.add_bind(
             vm.interns.intern(name),
             Val::Builtin(BuiltinVal {
-                name: name.to_string(),
+                name: format!("builtins/{name}"),
                 code: target,
             }),
         );
