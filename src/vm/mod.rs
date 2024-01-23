@@ -59,8 +59,8 @@ impl Vm {
         self.step_to_end(proc)
     }
 
-    pub(crate) fn lookup_module(&self, s: InternedSymbol) -> RefCell<Rc<Module>> {
-        self.modules.get(&s).unwrap().clone()
+    pub(crate) fn lookup_module(&self, s: InternedSymbol) -> Option<RefCell<Rc<Module>>> {
+        self.modules.get(&s).cloned()
     }
 
     fn schedule(&mut self, module: RefCell<Rc<Module>>, code: Vec<u8>) -> Proc {

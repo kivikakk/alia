@@ -110,7 +110,17 @@ impl Proc {
                     None => Val::Symbol(None, vm.interns.intern("panic TODO!".as_bytes())),
                 }
             }
-            &Val::Symbol(Some(m), s) => todo!(),
+            &Val::Symbol(Some(m), s) => {
+                let module = match vm.lookup_module(m) {
+                    Some(v) => v,
+                    None => return Val::Symbol(None, vm.interns.intern("panic TODO!".as_bytes())),
+                };
+                let module = module.borrow();
+                match module.lookup(vm, s) {
+                    Some(v) => v,
+                    None => Val::Symbol(None, vm.interns.intern("panic TODO!".as_bytes())),
+                }
+            }
             Val::Integer(_) | Val::Float(_) | Val::String(_) => {
                 // primitives evaluate to themselves
                 form.clone()
