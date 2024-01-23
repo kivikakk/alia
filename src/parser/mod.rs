@@ -56,7 +56,7 @@ impl Parser {
                     };
                     node = Node::new(
                         NodeValue::List(vec![
-                            Node::new(NodeValue::Symbol("quote".to_string()), *range),
+                            Node::new(NodeValue::Symbol(None, "quote".to_string()), *range),
                             node,
                         ]),
                         range_all,
@@ -117,7 +117,7 @@ impl Parser {
         let range_all = (range.0, node.range.1);
         Node::new(
             NodeValue::List(vec![
-                Node::new(NodeValue::Symbol("quote".to_string()), range),
+                Node::new(NodeValue::Symbol(None, "quote".to_string()), range),
                 node,
             ]),
             range_all,
@@ -167,7 +167,7 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
         match kind {
             TokenKind::Whitespace => {}
             TokenKind::Symbol => parser.atom(Node::new(
-                NodeValue::Symbol(parse_symbol(excerpt, (start, end))?),
+                parse_symbol(excerpt, (start, end))?,
                 (start, end),
             ))?,
             TokenKind::SymbolColon => {
@@ -178,7 +178,7 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
                 let kwend = (end.0, end.1 - 1).into();
                 parser.quote((kwend, end))?;
                 parser.atom(Node::new(
-                    NodeValue::Symbol(parse_symbol(&excerpt[..excerpt.len() - 1], (start, kwend))?),
+                    parse_symbol(&excerpt[..excerpt.len() - 1], (start, kwend))?,
                     (start, kwend),
                 ))?
             }
@@ -206,14 +206,17 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
     Ok((result, offset, loc))
 }
 
-fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<String, Error> {
-    let s = str::from_utf8(s)
-        .expect("source should be valid utf-8")
-        .to_string();
+fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> {
+    let s = str::from_utf8(s).expect("source should be valid utf-8");
     if s.ends_with(".") {
         Err(parse_error(ErrorKind::Symbol, range))
     } else {
-        Ok(s)
+        if let Some((m, s)) = s.split_once("/") {
+            assert!(!s.contains("/"));
+            Ok(NodeValue::Symbol(Some(m.to_string()), s.to_string()))
+        } else {
+            Ok(NodeValue::Symbol(None, s.to_string()))
+        }
     }
 }
 

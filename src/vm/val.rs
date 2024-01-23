@@ -6,7 +6,7 @@ use super::{module::Module, InternedSymbol, Interns};
 
 #[derive(Clone)]
 pub(crate) enum Val {
-    Symbol(InternedSymbol),
+    Symbol(Option<InternedSymbol>, InternedSymbol),
     Integer(i64),
     Float(f64),
     String(String),
@@ -27,11 +27,16 @@ pub(crate) type Builtin = fn(&mut Interns, Val) -> Val;
 impl Val {
     pub(crate) fn format(&self, interns: &Interns) -> String {
         match self {
-            Val::Symbol(i) => str::from_utf8(interns.resolve(*i))
+            &Val::Symbol(None, s) => str::from_utf8(interns.resolve(s))
                 .expect("all symbols should be utf-8")
                 .to_string(),
+            &Val::Symbol(Some(m), s) => format!(
+                "{}/{}",
+                str::from_utf8(interns.resolve(m)).expect("all symbol modules should be utf-8"),
+                str::from_utf8(interns.resolve(s)).expect("all symbols should be utf-8"),
+            ),
             Val::Integer(i) => format!("{}", i),
-            Val::Float(f) => format!("{}", f), // XXX
+            Val::Float(f) => format!("{}", f), // XXX doesn't roundtrip
             Val::String(s) => s.to_string(),
             Val::List(ns) => {
                 let mut s = "(".to_string();
@@ -74,7 +79,19 @@ impl Val {
 
 impl From<InternedSymbol> for Val {
     fn from(value: InternedSymbol) -> Self {
-        Val::Symbol(value)
+        Val::Symbol(None, value)
+    }
+}
+
+impl From<(InternedSymbol, InternedSymbol)> for Val {
+    fn from(value: (InternedSymbol, InternedSymbol)) -> Self {
+        Val::Symbol(Some(value.0), value.1)
+    }
+}
+
+impl From<(Option<InternedSymbol>, InternedSymbol)> for Val {
+    fn from(value: (Option<InternedSymbol>, InternedSymbol)) -> Self {
+        Val::Symbol(value.0, value.1)
     }
 }
 

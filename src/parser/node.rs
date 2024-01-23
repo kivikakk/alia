@@ -51,7 +51,7 @@ impl Display for Node {
 
 #[derive(PartialEq)]
 pub(crate) enum NodeValue {
-    Symbol(String),
+    Symbol(Option<String>, String),
     Integer(i64),
     Float(f64),
     String(String),
@@ -62,7 +62,8 @@ pub(crate) enum NodeValue {
 impl Display for NodeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeValue::Symbol(s) => f.write_str(s),
+            NodeValue::Symbol(None, s) => f.write_str(s),
+            NodeValue::Symbol(Some(m), s) => write!(f, "{m}/{s}"),
             NodeValue::Integer(i) => write!(f, "{i}"),
             NodeValue::Float(d) => write!(f, "{d:?}"),
             NodeValue::String(s) => write!(f, "{s:?}"),

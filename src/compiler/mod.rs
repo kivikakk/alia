@@ -41,8 +41,14 @@ impl Compiler {
 
     fn node(&mut self, n: &Node) -> Result<(), Error> {
         match &n.value {
-            NodeValue::Symbol(s) => {
-                self.op(Op::ImmediateSymbol)?;
+            NodeValue::Symbol(None, s) => {
+                self.op(Op::ImmediateSymbolBare)?;
+                self.bytes(&s)?;
+                Ok(())
+            }
+            NodeValue::Symbol(Some(m), s) => {
+                self.op(Op::ImmediateSymbolWithModule)?;
+                self.bytes(&m)?;
                 self.bytes(&s)?;
                 Ok(())
             }

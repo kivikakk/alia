@@ -26,7 +26,9 @@ impl Interns {
     }
 
     pub(super) fn intern<S: AsRef<[u8]>>(&mut self, s: S) -> InternedSymbol {
-        let e = self.sym_to_ix.entry(s.as_ref().to_vec());
+        let s = s.as_ref();
+        assert!(!s.contains(&b'/'));
+        let e = self.sym_to_ix.entry(s.to_vec());
         InternedSymbol(*e.or_insert_with_key(|key| {
             self.ix_to_sym.push(key.clone());
             self.ix_to_sym.len()

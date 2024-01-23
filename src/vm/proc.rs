@@ -33,11 +33,23 @@ impl Proc {
 
         match op {
             Op::Nop => {}
-            Op::ImmediateSymbol => {
-                let len = self.n::<usize>();
-                let s = vm.interns.intern(&self.code[self.ip..self.ip + len]);
-                self.stack.push(Val::Symbol(s));
-                self.ip += len;
+            Op::ImmediateSymbolBare => {
+                let slen = self.n::<usize>();
+                let s = vm.interns.intern(&self.code[self.ip..self.ip + slen]);
+                self.ip += slen;
+
+                self.stack.push(Val::Symbol(None, s));
+            }
+            Op::ImmediateSymbolWithModule => {
+                let mlen = self.n::<usize>();
+                let m = vm.interns.intern(&self.code[self.ip..self.ip + mlen]);
+                self.ip += mlen;
+
+                let slen = self.n::<usize>();
+                let s = vm.interns.intern(&self.code[self.ip..self.ip + slen]);
+                self.ip += slen;
+
+                self.stack.push(Val::Symbol(Some(m), s));
             }
             Op::ImmediateInteger => {
                 let i = self.n::<i64>();
@@ -87,9 +99,9 @@ impl Proc {
     //
     fn eval(&mut self, vm: &mut Vm, form: &Val) -> Val {
         match form {
-            &Val::Symbol(s) => {
+            &Val::Symbol(m, s) => {
                 // `true`/`false` evaluate to themselves
-                if s == interns::TRUE || s == interns::FALSE {
+                if m.is_none() && (s == interns::TRUE || s == interns::FALSE) {
                     return form.clone();
                 }
                 // TODO/RESUME:
@@ -101,7 +113,7 @@ impl Proc {
                 // here without doing string munging in the VM (!).
                 match vm.modules.get(&s) {
                     Some(v) => Val::Module(v.clone()),
-                    None => Val::Symbol(vm.interns.intern("TODO!".as_bytes())),
+                    None => Val::Symbol(None, vm.interns.intern("TODO!".as_bytes())),
                 }
             }
             Val::Integer(_) | Val::Float(_) | Val::String(_) => {
