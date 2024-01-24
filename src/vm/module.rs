@@ -10,7 +10,7 @@ pub(crate) struct Module {
     // consts // fns // macros
     // ^--- these all occupy the same namespace!
     pub(crate) name: String,
-    pub(crate) submodules: HashMap<InternedSymbol, Rc<RefCell<Module>>>,
+    pub(crate) _submodules: HashMap<InternedSymbol, Rc<RefCell<Module>>>,
     pub(crate) refers: Vec<Rc<RefCell<Module>>>,
     pub(crate) binds: HashMap<InternedSymbol, Val>, // XXX
 }
@@ -19,7 +19,7 @@ impl Module {
     pub(super) fn new(name: String) -> Self {
         Module {
             name,
-            submodules: HashMap::new(),
+            _submodules: HashMap::new(),
             refers: vec![],
             binds: HashMap::new(),
         }
@@ -31,8 +31,7 @@ impl Module {
             let sym = vm.interns.intern(k);
             m.add_bind(sym, Val::Symbol(None, sym));
         }
-        m.add_bind_builtin(vm, "print", super::builtins::print);
-        m.add_bind_builtin(vm, "quote", super::builtins::quote);
+        super::builtins::add_all(vm, &mut m);
         m
     }
 
@@ -69,11 +68,6 @@ impl Module {
             None => {}
             Some(_) => panic!("duplicate bind"),
         }
-    }
-
-    pub(crate) fn set(&mut self, vm: &mut Vm, name: &str, target: Val) {
-        let s = vm.interns.intern(name);
-        self.sets(s, target);
     }
 
     pub(crate) fn sets(&mut self, s: InternedSymbol, target: Val) {

@@ -11,7 +11,7 @@ pub(crate) struct Proc {
     // a reference to the vm? passed in on every call?
     // stack
     // context??
-    pub(super) pid: Pid,
+    pub(super) _pid: Pid,
     pub(super) module: Rc<RefCell<Module>>,
     code: Vec<u8>,
     ip: usize,
@@ -21,7 +21,7 @@ pub(crate) struct Proc {
 impl Proc {
     pub(super) fn new(pid: Pid, module: Rc<RefCell<Module>>, code: Vec<u8>) -> Proc {
         Proc {
-            pid,
+            _pid: pid,
             module,
             code,
             ip: 0,

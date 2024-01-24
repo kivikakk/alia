@@ -59,7 +59,7 @@ impl Completer for EditorHelper {
         &self,
         line: &str,
         pos: usize,
-        ctx: &Context<'_>,
+        _ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Self::Candidate>)> {
         // Support minimal symbol tab completion:
         // 1. at end of line only        <--

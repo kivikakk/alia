@@ -20,10 +20,11 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
     let mut vm = Vm::new();
     let active_module = vm.anonymous_module("*scratch*");
     let strue = vm.intern("true");
+    let sfalse = vm.intern("false");
     let sareb = vm.intern("alia-repl-echo-bytecode");
     active_module
         .borrow_mut()
-        .sets(sareb, Val::Symbol(None, strue));
+        .sets(sareb, Val::Symbol(None, sfalse));
 
     let vm = Rc::new(RefCell::new(vm));
 
