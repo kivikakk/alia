@@ -1,21 +1,18 @@
+use num_traits::{FromBytes, FromPrimitive};
 use std::{cell::RefCell, rc::Rc};
 
-use num_traits::{FromBytes, FromPrimitive};
-
-use super::{val::BuiltinVal, Module, Op, Val, Vm};
+use super::{BuiltinVal, Module, Op, Val, Vm};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct Pid(pub(super) usize);
 
 pub(crate) struct Proc {
-    // a reference to the vm? passed in on every call?
-    // stack
-    // context??
     pub(super) _pid: Pid,
     pub(super) module: Rc<RefCell<Module>>,
+    pub(super) last: Option<Val>,
     code: Vec<u8>,
     ip: usize,
-    pub(super) stack: Vec<Val>,
+    stack: Vec<Val>,
 }
 
 impl Proc {
@@ -23,6 +20,7 @@ impl Proc {
         Proc {
             _pid: pid,
             module,
+            last: None,
             code,
             ip: 0,
             stack: vec![],
@@ -55,6 +53,8 @@ impl Proc {
 
                 self.stack.push(Val::Symbol(Some(m), s));
             }
+            Op::ImmediateBooleanTrue => self.stack.push(Val::Boolean(true)),
+            Op::ImmediateBooleanFalse => self.stack.push(Val::Boolean(false)),
             Op::ImmediateInteger => {
                 let i = self.n::<i64>();
                 self.stack.push(Val::Integer(i));
@@ -80,9 +80,19 @@ impl Proc {
                 let v = self.stack.split_off(self.stack.len() - n);
                 self.stack.push(Val::Vec(v));
             }
+            Op::Drop => {
+                self.last = Some(self.stack.pop().expect("stack should not be empty"));
+            }
             Op::Eval => {
                 let form = self.stack.pop().expect("stack should not be empty");
                 let result = self.eval(vm, &form);
+                self.stack.push(result);
+            }
+            Op::Call => {
+                let n = self.n::<usize>();
+                let args = self.stack.split_off(self.stack.len() - n);
+                let callee = self.stack.pop().unwrap();
+                let result = self.call(vm, &callee, &args);
                 self.stack.push(result);
             }
             Op::JumpRelative => {
@@ -96,6 +106,7 @@ impl Proc {
         if self.ip < self.code.len() {
             Step::Running
         } else {
+            assert_eq!(0, self.stack.len());
             Step::Finished
         }
     }
@@ -127,29 +138,33 @@ impl Proc {
                     None => Val::Symbol(None, vm.interns.intern("panic TODO!".as_bytes())),
                 }
             }
-            Val::Integer(_) | Val::Float(_) | Val::String(_) => {
+            Val::Boolean(_) | Val::Integer(_) | Val::Float(_) | Val::String(_) => {
                 // primitives evaluate to themselves
                 form.clone()
             }
             Val::List(ns) => {
-                let mut ns = ns.iter();
-                let head = match ns.next() {
-                    Some(e) => e,
-                    None => {
+                let head = match ns.len() {
+                    0 => {
                         // empty cons evaluates to itself
                         return form.clone();
                     }
+                    _ => &ns[0],
                 };
-                match self.eval(vm, head) {
-                    Val::Builtin(BuiltinVal { code, .. }) => code(vm, self, ns.collect()),
-                    _ => panic!("can't call {}", head.format(vm)),
-                }
+                let callee = self.eval(vm, head);
+                self.call(vm, &callee, &ns[1..])
             }
             Val::Vec(ns) => Val::Vec(ns.iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>()),
             Val::Builtin(..) | Val::Module(..) => {
                 // builtins and modules evaluate to themselves
                 form.clone()
             }
+        }
+    }
+
+    fn call(&mut self, vm: &mut Vm, callee: &Val, args: &[Val]) -> Val {
+        match callee {
+            Val::Builtin(BuiltinVal { code, .. }) => code(vm, self, args),
+            _ => panic!("can't call {}", callee.format(vm)),
         }
     }
 

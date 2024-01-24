@@ -1,56 +1,73 @@
 mod error;
 mod tests;
 
-pub(crate) use error::Error;
 use num_traits::ToBytes;
+use std::mem;
 
-use crate::parser::{Node, NodeValue};
+pub(crate) use self::error::Error;
+use crate::parser::{Document, Node, NodeValue};
 use crate::vm::Op;
 
-pub(crate) fn compile_one(n: &Node) -> Result<Vec<u8>, Error> {
-    let mut c = Compiler::new();
-    c.node(n)?;
-    c.eval()?;
-    Ok(c.out)
-}
-
-struct Compiler {
+pub(crate) struct Compiler {
     out: Vec<u8>,
 }
 
+type Result = core::result::Result<(), Error>;
+
 impl Compiler {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Compiler { out: vec![] }
     }
 
-    fn op(&mut self, op: Op) -> Result<(), Error> {
-        self.out.push(op as u8);
+    pub(crate) fn finish(&mut self) -> Vec<u8> {
+        mem::take(&mut self.out)
+    }
+
+    pub(crate) fn doc(&mut self, doc: &Document) -> Result {
+        for toplevel in &doc.toplevels {
+            self.toplevel(toplevel)?;
+        }
         Ok(())
     }
 
-    fn n<T: ToBytes<Bytes = [u8; 8]>>(&mut self, u: T) -> Result<(), Error> {
-        self.out.extend_from_slice(&u.to_le_bytes());
+    fn toplevel(&mut self, n: &Node) -> Result {
+        match n.value {
+            NodeValue::Symbol(..)
+            | NodeValue::Integer(_)
+            | NodeValue::Float(_)
+            | NodeValue::String(_)
+            | NodeValue::Vec(_) => {
+                // warn: side-effects only
+                // (and int/float/string can't even do that).
+                self.expr(n)?;
+                self.op(Op::Drop)?;
+            }
+            NodeValue::List(_) => todo!(),
+        }
         Ok(())
     }
 
-    fn bytes<S: AsRef<[u8]>>(&mut self, s: S) -> Result<(), Error> {
-        let s = s.as_ref();
-        self.n(s.len())?;
-        self.out.extend_from_slice(s);
-        Ok(())
-    }
-
-    fn node(&mut self, n: &Node) -> Result<(), Error> {
+    fn expr(&mut self, n: &Node) -> Result {
         match &n.value {
             NodeValue::Symbol(None, s) => {
-                self.op(Op::ImmediateSymbolBare)?;
-                self.bytes(s)?;
-                Ok(())
+                // TODO: proper compile-time resolution! not this shit!
+                // XXX: local binds are ignored
+                if s == "true" {
+                    self.op(Op::ImmediateBooleanTrue)
+                } else if s == "false" {
+                    self.op(Op::ImmediateBooleanFalse)
+                } else {
+                    self.op(Op::ImmediateSymbolBare)?;
+                    self.bytes(s)?;
+                    self.op(Op::Eval)?;
+                    Ok(())
+                }
             }
             NodeValue::Symbol(Some(m), s) => {
                 self.op(Op::ImmediateSymbolWithModule)?;
                 self.bytes(m)?;
                 self.bytes(s)?;
+                self.op(Op::Eval)?;
                 Ok(())
             }
             NodeValue::Integer(i) => {
@@ -69,16 +86,22 @@ impl Compiler {
                 Ok(())
             }
             NodeValue::List(ns) => {
+                let mut ns = ns.iter();
+                let head = ns.next().expect("list should have a head");
+                self.expr(head)?; // <- resolves
+                let mut i: usize = 0;
                 for n in ns {
-                    self.node(n)?;
+                    // XXX: causing eager evaluation
+                    self.expr(n)?;
+                    i += 1;
                 }
-                self.op(Op::ConsList)?;
-                self.n(ns.len())?;
+                self.op(Op::Call)?;
+                self.n(i)?;
                 Ok(())
             }
             NodeValue::Vec(ns) => {
                 for n in ns {
-                    self.node(n)?;
+                    self.expr(n)?;
                 }
                 self.op(Op::ConsVec)?;
                 self.n(ns.len())?;
@@ -87,8 +110,20 @@ impl Compiler {
         }
     }
 
-    fn eval(&mut self) -> Result<(), Error> {
-        self.op(Op::Eval)?;
+    fn op(&mut self, op: Op) -> Result {
+        self.out.push(op as u8);
+        Ok(())
+    }
+
+    fn n<T: ToBytes<Bytes = [u8; 8]>>(&mut self, u: T) -> Result {
+        self.out.extend_from_slice(&u.to_le_bytes());
+        Ok(())
+    }
+
+    fn bytes<S: AsRef<[u8]>>(&mut self, s: S) -> Result {
+        let s = s.as_ref();
+        self.n(s.len())?;
+        self.out.extend_from_slice(s);
         Ok(())
     }
 }

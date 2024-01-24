@@ -1,8 +1,6 @@
 use std::fmt::{Debug, Display};
-use std::str::{self, FromStr};
 
-use super::{Document, Range};
-use crate::parser;
+use super::Range;
 
 pub(crate) struct Node {
     pub(crate) value: NodeValue,
@@ -21,25 +19,6 @@ impl Node {
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
         self.value.eq(&other.value)
-    }
-}
-
-impl FromStr for Node {
-    type Err = parser::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut doc = s.parse::<Document>()?;
-        match doc.toplevels.len() {
-            0 => Err(parser::Error {
-                kind: parser::ErrorKind::Empty,
-                range: doc.range,
-            }),
-            1 => Ok(doc.toplevels.pop().unwrap()),
-            _ => Err(parser::Error {
-                kind: parser::ErrorKind::Multiple,
-                range: doc.range,
-            }),
-        }
     }
 }
 

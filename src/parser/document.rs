@@ -2,14 +2,20 @@ use std::fmt::{Debug, Display};
 use std::str::{self, FromStr};
 
 use super::{Loc, Node, NodeValue, Range};
-use crate::parser;
+use crate::{compiler, parser};
 
 pub(crate) struct Document {
     pub(crate) toplevels: Vec<Node>,
-    pub(crate) range: Range,
+    pub(crate) _range: Range,
 }
 
 impl Document {
+    pub(crate) fn compile(&self) -> Result<Vec<u8>, compiler::Error> {
+        let mut c = compiler::Compiler::new();
+        c.doc(self)?;
+        Ok(c.finish())
+    }
+
     pub(crate) fn nodes_at<L: Into<Loc>>(&self, loc: L) -> Vec<&Node> {
         let mut nodes = vec![];
         let loc = loc.into();
@@ -93,7 +99,7 @@ impl FromStr for Document {
 
         Ok(Document {
             toplevels,
-            range: ((0, 0).into(), loc).into(),
+            _range: ((0, 0).into(), loc).into(),
         })
     }
 }

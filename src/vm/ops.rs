@@ -4,13 +4,20 @@ use num_derive::FromPrimitive;
 #[repr(u8)]
 pub(crate) enum Op {
     Nop = 0,
+    //
     ImmediateSymbolBare = 1,
     ImmediateSymbolWithModule = 2,
-    ImmediateInteger = 3,
-    ImmediateFloat = 4,
-    ImmediateString = 5,
-    ConsList = 6,
-    ConsVec = 7,
-    Eval = 8,
-    JumpRelative = 9,
+    ImmediateBooleanTrue = 3,
+    ImmediateBooleanFalse = 4,
+    ImmediateInteger = 5,
+    ImmediateFloat = 6,
+    ImmediateString = 7,
+    ConsList = 8,
+    ConsVec = 9,
+    //
+    Drop = 10,
+    Eval = 11,
+    Call = 12,
+    //
+    JumpRelative = 20,
 }

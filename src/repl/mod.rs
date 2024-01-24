@@ -6,8 +6,7 @@ use std::rc::Rc;
 
 use rustyline::error::ReadlineError;
 
-use crate::compiler::compile_one;
-use crate::parser::{self, Node};
+use crate::parser::{self, Document};
 use crate::vm::{Val, Vm};
 
 use self::editor::{Editor, EditorHelper};
@@ -39,11 +38,11 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
         match rl.readline(&format!("({}){promptchar} ", &active_module.borrow().name)) {
             Ok(line) => {
                 let full = acc.clone() + &line;
-                match full.parse::<Node>() {
-                    Ok(node) => {
+                match full.parse::<Document>() {
+                    Ok(doc) => {
                         _ = rl.add_history_entry(&full);
                         acc.clear();
-                        let code = compile_one(&node)?;
+                        let code = doc.compile()?;
                         let mut vm = vm.borrow_mut();
                         match active_module.borrow().lookup(&vm, sareb) {
                             Some(Val::Symbol(None, s)) if s == strue => {
@@ -51,10 +50,8 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                             }
                             _ => {}
                         }
-                        let mut stack = vm.run_to_completion(active_module.clone(), code);
-                        while let Some(val) = stack.pop() {
-                            eprintln!("{}", val.format(&vm));
-                        }
+                        let val = vm.run_to_completion(active_module.clone(), code);
+                        eprintln!("{}", val.format(&vm));
                     }
                     Err(parser::Error {
                         kind: parser::ErrorKind::Unfinished,

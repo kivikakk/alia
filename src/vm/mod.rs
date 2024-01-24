@@ -7,14 +7,13 @@ mod val;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::mem;
 use std::rc::Rc;
 use std::str;
 
 pub(crate) use self::interns::InternedSymbol;
 pub(crate) use self::module::Module;
 pub(crate) use self::ops::Op;
-pub(crate) use self::val::Val;
+pub(crate) use self::val::{BuiltinVal, Val};
 
 use self::interns::Interns;
 use self::proc::{Pid, Proc, Step};
@@ -60,11 +59,7 @@ impl Vm {
         Rc::new(RefCell::new(module))
     }
 
-    pub(crate) fn run_to_completion(
-        &mut self,
-        module: Rc<RefCell<Module>>,
-        code: Vec<u8>,
-    ) -> Vec<Val> {
+    pub(crate) fn run_to_completion(&mut self, module: Rc<RefCell<Module>>, code: Vec<u8>) -> Val {
         let proc = self.schedule(module, code);
         self.step_to_end(proc)
     }
@@ -78,12 +73,12 @@ impl Vm {
         Proc::new(self.last_pid, module, code)
     }
 
-    fn step_to_end(&mut self, mut proc: Proc) -> Vec<Val> {
+    fn step_to_end(&mut self, mut proc: Proc) -> Val {
         loop {
             match proc.step(self) {
                 Step::Running => {}
                 Step::Finished => {
-                    return mem::take(&mut proc.stack);
+                    return proc.last.expect("proc should return (drop) a value");
                 }
             }
         }

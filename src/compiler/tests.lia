@@ -1,0 +1,30 @@
+(mod alia.compiler.tests
+     using: [ops: alia.compiler.ops])
+
+;; TODO: transform sexp assembly into bytecode
+;; TODO: learn WASM's sexp assembly thoroughly to get some inspiration.
+;;
+;; WASM does it like this:
+;;
+;; (loop $my_loop
+;;
+;;    ...
+;;
+;;     br $my_loop     ;; unconditional
+;;
+;;     local.get $blah
+;;     i32.const 10
+;;     i32.lt_s
+;;     br_if $my_loop  ;; etc.
+;; )
+
+(deftest boolean_shortcut []
+  (assert_compiles! "true" (ops/Drop ops/ImmediateBooleanTrue))
+  (assert_compiles! "false" (ops/Drop ops/ImmediateBooleanFalse))
+
+  ;; XXX: jump compiling is NYI
+  (deftest loop_compiles_just_fine []
+    (assert_compiles! "(loop (awawa))"
+                      [
+
+                      ]))

@@ -9,6 +9,7 @@ use super::{module::Module, InternedSymbol};
 #[derive(Clone)]
 pub(crate) enum Val {
     Symbol(Option<InternedSymbol>, InternedSymbol),
+    Boolean(bool),
     Integer(i64),
     Float(f64),
     String(String),
@@ -24,7 +25,7 @@ pub(crate) struct BuiltinVal {
     pub(crate) code: Builtin,
 }
 
-pub(crate) type Builtin = fn(&mut Vm, &mut Proc, Vec<&Val>) -> Val;
+pub(crate) type Builtin = fn(&mut Vm, &mut Proc, &[Val]) -> Val;
 
 impl Val {
     pub(crate) fn format(&self, vm: &Vm) -> String {
@@ -32,6 +33,7 @@ impl Val {
             &Val::Symbol(None, s) => str::from_utf8(vm.interns.resolve(s))
                 .expect("all symbols should be utf-8")
                 .to_string(),
+            &Val::Boolean(b) => format!("{b}"),
             &Val::Symbol(Some(m), s) => format!(
                 "{}/{}",
                 str::from_utf8(vm.interns.resolve(m)).expect("all symbol modules should be utf-8"),

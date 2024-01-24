@@ -1,22 +1,15 @@
 #![cfg(test)]
 
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use super::Document;
 
-use super::{Document, Node};
-
-fn assert_roundtrips<T>(s: &str)
-where
-    T: FromStr + Display + PartialEq + Debug,
-    T::Err: Debug,
-{
+fn assert_roundtrips(s: &str) {
     println!("should parse: {s}");
-    let first = s.parse::<T>().unwrap_or_else(|_| panic!("input should parse: {s}"));
+    let first = s
+        .parse::<Document>()
+        .unwrap_or_else(|_| panic!("input should parse: {s}"));
     let rendered = format!("{}", first);
     let second = rendered
-        .parse::<T>()
+        .parse::<Document>()
         .expect("rerendered input should parse");
     assert_eq!(first, second);
 }
@@ -40,17 +33,20 @@ fn simples_all_parse() {
 
         if !expected.expect("should declare which way to assert") {
             println!("shouldn't parse: {line}");
-            line.parse::<Node>().expect_err("input shouldn't parse");
+            match line.parse::<Document>() {
+                Ok(doc) => assert_ne!(1, doc.toplevels.len()),
+                Err(_) => {}
+            }
         } else {
-            assert_roundtrips::<Node>(line);
+            assert_roundtrips(line);
         }
     }
 }
 
 #[test]
 fn document_parses() {
-    assert_roundtrips::<Document>("a b");
-    assert_roundtrips::<Document>(
+    assert_roundtrips("a b");
+    assert_roundtrips(
         r#"
         (ns abc)
         (abc/def [ghi: jkl])

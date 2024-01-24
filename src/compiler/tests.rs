@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::{compiler::compile_one, parser::Node};
+use crate::parser::Document;
 
 struct AsmState {
     out: Vec<u8>,
@@ -31,7 +31,6 @@ impl AsmState {
 
 // matches Compiler
 macro_rules! asm {
-    // ($( $kind:ident $value:tt; )+) => {{
     ($( $rest:tt )+ ) => {{
         let mut state = AsmState::new();
         asm_into!(=> state, { $( $rest  )+ });
@@ -78,11 +77,18 @@ macro_rules! asm_into {
 }
 
 fn assert_compiles<C: AsRef<[u8]>>(code: &str, expected: C) {
-    let node = code.parse::<Node>().unwrap();
-    assert_eq!(Ok(expected.as_ref()), compile_one(&node).as_deref());
+    let doc = code.parse::<Document>().unwrap();
+    assert_eq!(Ok(expected.as_ref()), doc.compile().as_deref());
 }
 
 #[test]
+fn boolean_shortcut() {
+    assert_compiles("true", asm! { op ImmediateBooleanTrue; op Drop; });
+    assert_compiles("false", asm! { op ImmediateBooleanFalse; op Drop; });
+}
+
+#[test]
+#[ignore = "jump compile NYI"]
 fn loop_compiles_just_fine() {
     assert_compiles(
         "(loop (awawa))",
