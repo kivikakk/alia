@@ -8,7 +8,7 @@ pub(super) fn print(vm: &mut Vm, proc: &mut Proc, args: Vec<&Val>) -> Val {
     for arg in eval_args(vm, proc, args) {
         println!("{}", arg.format(vm));
     }
-    Val::List(vec![])
+    Val::List(Vec::with_capacity(0))
 }
 
 pub(super) fn quote(_vm: &mut Vm, _proc: &mut Proc, args: Vec<&Val>) -> Val {

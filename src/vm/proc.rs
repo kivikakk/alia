@@ -12,14 +12,14 @@ pub(crate) struct Proc {
     // stack
     // context??
     pub(super) pid: Pid,
-    pub(super) module: RefCell<Rc<Module>>,
+    pub(super) module: Rc<RefCell<Module>>,
     code: Vec<u8>,
     ip: usize,
     pub(super) stack: Vec<Val>,
 }
 
 impl Proc {
-    pub(super) fn new(pid: Pid, module: RefCell<Rc<Module>>, code: Vec<u8>) -> Proc {
+    pub(super) fn new(pid: Pid, module: Rc<RefCell<Module>>, code: Vec<u8>) -> Proc {
         Proc {
             pid,
             module,

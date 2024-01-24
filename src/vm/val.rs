@@ -15,7 +15,7 @@ pub(crate) enum Val {
     List(Vec<Val>),
     Vec(Vec<Val>),
     Builtin(BuiltinVal),
-    Module(RefCell<Rc<Module>>),
+    Module(Rc<RefCell<Module>>),
 }
 
 #[derive(Clone)]

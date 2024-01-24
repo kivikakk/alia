@@ -9,16 +9,18 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
+use std::str;
 
+pub(crate) use self::interns::InternedSymbol;
+pub(crate) use self::module::Module;
 pub(crate) use self::ops::Op;
+pub(crate) use self::val::Val;
 
-use self::interns::{InternedSymbol, Interns};
-use self::module::Module;
+use self::interns::Interns;
 use self::proc::{Pid, Proc, Step};
-use self::val::Val;
 
 pub(crate) struct Vm {
-    modules: HashMap<InternedSymbol, RefCell<Rc<Module>>>,
+    pub(super) modules: HashMap<InternedSymbol, Rc<RefCell<Module>>>,
     pub(super) interns: Interns,
     last_pid: Pid,
 }
@@ -34,12 +36,20 @@ impl Vm {
         let builtins = Module::builtins(&mut vm);
         vm.modules.insert(
             vm.interns.intern("builtins"),
-            RefCell::new(Rc::new(builtins)),
+            Rc::new(RefCell::new(builtins)),
         );
         vm
     }
 
-    pub(crate) fn anonymous_module(&mut self, name: &str) -> RefCell<Rc<Module>> {
+    pub(crate) fn intern(&mut self, name: &str) -> InternedSymbol {
+        self.interns.intern(name)
+    }
+
+    pub(crate) fn resolve(&self, s: InternedSymbol) -> &str {
+        str::from_utf8(self.interns.resolve(s)).expect("all interned symbols should be utf-8")
+    }
+
+    pub(crate) fn anonymous_module(&mut self, name: &str) -> Rc<RefCell<Module>> {
         let mut module = Module::new(name.to_string());
         module.refer(
             self.modules
@@ -47,23 +57,23 @@ impl Vm {
                 .unwrap()
                 .clone(),
         );
-        RefCell::new(Rc::new(module))
+        Rc::new(RefCell::new(module))
     }
 
     pub(crate) fn run_to_completion(
         &mut self,
-        module: RefCell<Rc<Module>>,
+        module: Rc<RefCell<Module>>,
         code: Vec<u8>,
     ) -> Vec<Val> {
         let proc = self.schedule(module, code);
         self.step_to_end(proc)
     }
 
-    pub(crate) fn lookup_module(&self, s: InternedSymbol) -> Option<RefCell<Rc<Module>>> {
+    pub(crate) fn lookup_module(&self, s: InternedSymbol) -> Option<Rc<RefCell<Module>>> {
         self.modules.get(&s).cloned()
     }
 
-    fn schedule(&mut self, module: RefCell<Rc<Module>>, code: Vec<u8>) -> Proc {
+    fn schedule(&mut self, module: Rc<RefCell<Module>>, code: Vec<u8>) -> Proc {
         self.last_pid = Pid(self.last_pid.0 + 1);
         Proc::new(self.last_pid, module, code)
     }

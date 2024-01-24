@@ -10,9 +10,9 @@ pub(crate) struct Module {
     // consts // fns // macros
     // ^--- these all occupy the same namespace!
     pub(crate) name: String,
-    submodules: HashMap<InternedSymbol, RefCell<Rc<Module>>>,
-    refers: Vec<RefCell<Rc<Module>>>,
-    binds: HashMap<InternedSymbol, Val>,
+    pub(crate) submodules: HashMap<InternedSymbol, Rc<RefCell<Module>>>,
+    pub(crate) refers: Vec<Rc<RefCell<Module>>>,
+    pub(crate) binds: HashMap<InternedSymbol, Val>, // XXX
 }
 
 impl Module {
@@ -36,18 +36,18 @@ impl Module {
         m
     }
 
-    pub(super) fn refer(&mut self, module: RefCell<Rc<Module>>) {
+    pub(super) fn refer(&mut self, module: Rc<RefCell<Module>>) {
         self.refers.push(module);
     }
 
-    pub(super) fn lookup(&self, vm: &Vm, s: InternedSymbol) -> Option<Val> {
+    pub(crate) fn lookup(&self, vm: &Vm, s: InternedSymbol) -> Option<Val> {
         // Order
         // * closure/let binds (TODO)
         // * binds
         // * top-level modules
         // * refers
         //
-        // Note that submodules aren't lookup-able bare.
+        // Note that submodules aren't lookup-able
         if let Some(v) = self.binds.get(&s) {
             return Some(v.clone());
         }
@@ -64,11 +64,20 @@ impl Module {
         None
     }
 
-    pub(super) fn add_bind(&mut self, sym: InternedSymbol, target: Val) {
-        match self.binds.insert(sym, target) {
+    pub(super) fn add_bind(&mut self, name: InternedSymbol, target: Val) {
+        match self.binds.insert(name, target) {
             None => {}
             Some(_) => panic!("duplicate bind"),
         }
+    }
+
+    pub(crate) fn set(&mut self, vm: &mut Vm, name: &str, target: Val) {
+        let s = vm.interns.intern(name);
+        self.sets(s, target);
+    }
+
+    pub(crate) fn sets(&mut self, s: InternedSymbol, target: Val) {
+        _ = self.binds.insert(s, target);
     }
 
     pub(super) fn add_bind_builtin(&mut self, vm: &mut Vm, name: &str, target: Builtin) {
