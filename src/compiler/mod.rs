@@ -92,7 +92,8 @@ impl Compiler {
                 let mut i: usize = 0;
                 for n in ns {
                     // XXX: causing eager evaluation
-                    self.expr(n)?;
+                    // self.expr(n)?;
+                    // TODO: this but without Op::Eval. Hmm.
                     i += 1;
                 }
                 self.op(Op::Call)?;
