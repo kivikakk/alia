@@ -1,4 +1,5 @@
 mod error;
+mod tests;
 
 pub(crate) use error::Error;
 use num_traits::ToBytes;

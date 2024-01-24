@@ -85,6 +85,12 @@ impl Proc {
                 let result = self.eval(vm, &form);
                 self.stack.push(result);
             }
+            Op::JumpRelative => {
+                let sip = self.ip;
+                let n = self.n::<usize>();
+                // So far this is a backwards jump only, relative to the opcode.
+                self.ip = sip - n;
+            }
         }
 
         if self.ip < self.code.len() {

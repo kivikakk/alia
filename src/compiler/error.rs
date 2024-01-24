@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
 
+#[derive(PartialEq)]
 pub(crate) struct Error {}
 
 impl Display for Error {

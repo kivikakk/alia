@@ -12,4 +12,5 @@ pub(crate) enum Op {
     ConsList = 6,
     ConsVec = 7,
     Eval = 8,
+    JumpRelative = 9,
 }
