@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use rustyline::error::ReadlineError;
 
+use crate::disasm::disasm;
 use crate::parser::{self, Document};
 use crate::vm::{Val, Vm};
 
@@ -19,11 +20,11 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
     let mut vm = Vm::new();
     let active_module = vm.anonymous_module("*scratch*");
     let strue = vm.intern("true");
-    let sfalse = vm.intern("false");
+    let _sfalse = vm.intern("false");
     let sareb = vm.intern("alia-repl-echo-bytecode");
     active_module
         .borrow_mut()
-        .sets(sareb, Val::Symbol(None, sfalse));
+        .sets(sareb, Val::Symbol(None, strue));
 
     let vm = Rc::new(RefCell::new(vm));
 
@@ -46,7 +47,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         let mut vm = vm.borrow_mut();
                         match active_module.borrow().lookup(&vm, sareb) {
                             Some(Val::Symbol(None, s)) if s == strue => {
-                                hexdump::hexdump(&code);
+                                disasm(&code)?;
                             }
                             _ => {}
                         }

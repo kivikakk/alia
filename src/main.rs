@@ -1,4 +1,5 @@
 mod compiler;
+mod disasm;
 #[cfg(feature = "lsp")]
 mod lsp;
 mod parser;

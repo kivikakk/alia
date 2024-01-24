@@ -8,15 +8,28 @@ pub(crate) use self::error::Error;
 use crate::parser::{Document, Node, NodeValue};
 use crate::vm::Op;
 
+macro_rules! guard {
+    ($self:ident.$lhs:tt = $rhs:expr; { $( $stmt:stmt );* }) => {
+        let old_lhs = $self.$lhs;
+        $self.$lhs = $rhs;
+        $( $stmt )*
+        $self.$lhs = old_lhs;
+    };
+}
+
 pub(crate) struct Compiler {
     out: Vec<u8>,
+    omit_evals: bool,
 }
 
 type Result = core::result::Result<(), Error>;
 
 impl Compiler {
     pub(crate) fn new() -> Self {
-        Compiler { out: vec![] }
+        Compiler {
+            out: vec![],
+            omit_evals: false,
+        }
     }
 
     pub(crate) fn finish(&mut self) -> Vec<u8> {
@@ -42,7 +55,11 @@ impl Compiler {
                 self.expr(n)?;
                 self.op(Op::Drop)?;
             }
-            NodeValue::List(_) => todo!(),
+            NodeValue::List(_) => {
+                // XXX for now, side-effects only
+                self.expr(n)?;
+                self.op(Op::Drop)?;
+            }
         }
         Ok(())
     }
@@ -90,12 +107,12 @@ impl Compiler {
                 let head = ns.next().expect("list should have a head");
                 self.expr(head)?; // <- resolves
                 let mut i: usize = 0;
-                for n in ns {
-                    // XXX: causing eager evaluation
-                    // self.expr(n)?;
-                    // TODO: this but without Op::Eval. Hmm.
-                    i += 1;
-                }
+                guard!(self.omit_evals = true; {
+                    for n in ns {
+                        self.expr(n)?;
+                        i += 1;
+                    }
+                });
                 self.op(Op::Call)?;
                 self.n(i)?;
                 Ok(())
@@ -112,6 +129,10 @@ impl Compiler {
     }
 
     fn op(&mut self, op: Op) -> Result {
+        match (&op, self.omit_evals) {
+            (&Op::Eval, true) => return Ok(()),
+            _ => {}
+        }
         self.out.push(op as u8);
         Ok(())
     }

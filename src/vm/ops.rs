@@ -21,3 +21,24 @@ pub(crate) enum Op {
     //
     JumpRelative = 20,
 }
+
+impl std::fmt::Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Op::Nop => write!(f, "Nop"),
+            Op::ImmediateSymbolBare => write!(f, "ImmediateSymbolBare"),
+            Op::ImmediateSymbolWithModule => write!(f, "ImmediateSymbolWithModule"),
+            Op::ImmediateBooleanTrue => write!(f, "ImmediateBooleanTrue"),
+            Op::ImmediateBooleanFalse => write!(f, "ImmediateBooleanFalse"),
+            Op::ImmediateInteger => write!(f, "ImmediateInteger"),
+            Op::ImmediateFloat => write!(f, "ImmediateFloat"),
+            Op::ImmediateString => write!(f, "ImmediateString"),
+            Op::ConsList => write!(f, "ConsList"),
+            Op::ConsVec => write!(f, "ConsVec"),
+            Op::Drop => write!(f, "Drop"),
+            Op::Eval => write!(f, "Eval"),
+            Op::Call => write!(f, "Call"),
+            Op::JumpRelative => write!(f, "JumpRelative"),
+        }
+    }
+}

@@ -11,7 +11,6 @@ repl = ["dep:rustyline"]
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.4"
-hexdump = "0.1"
 
 lsp-server = { version = "0.7", optional = true }
 lsp-types = { version = "0.95", optional = true }
