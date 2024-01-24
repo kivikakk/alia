@@ -24,6 +24,7 @@ impl<'c> Disassembler<'c> {
         let mut out = vec![];
 
         while self.ip < self.code.len() {
+            write!(out, "{:08x} ", self.ip).unwrap();
             let op = Op::from_u8(self.code[self.ip])
                 .ok_or_else(|| format!("invalid opcode {}", self.code[self.ip]))
                 .unwrap();
