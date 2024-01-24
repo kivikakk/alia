@@ -131,8 +131,8 @@ impl Proc {
                 // primitives evaluate to themselves
                 form.clone()
             }
-            Val::List(ref ns) => {
-                let mut ns = ns.into_iter();
+            Val::List(ns) => {
+                let mut ns = ns.iter();
                 let head = match ns.next() {
                     Some(e) => e,
                     None => {
@@ -145,9 +145,7 @@ impl Proc {
                     _ => panic!("can't call {}", head.format(vm)),
                 }
             }
-            Val::Vec(ref ns) => {
-                Val::Vec(ns.into_iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>())
-            }
+            Val::Vec(ns) => Val::Vec(ns.iter().map(|f| self.eval(vm, f)).collect::<Vec<_>>()),
             Val::Builtin(..) | Val::Module(..) => {
                 // builtins and modules evaluate to themselves
                 form.clone()

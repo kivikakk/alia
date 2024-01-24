@@ -9,8 +9,8 @@ mod vm;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let mut args_it = std::env::args().skip(1).into_iter();
-    while let Some(arg) = args_it.next() {
+    let mut args_it = std::env::args().skip(1);
+    if let Some(arg) = args_it.next() {
         if arg == "lsp" {
             #[cfg(feature = "lsp")]
             return lsp::main(args_it.collect());
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             #[cfg(not(feature = "repl"))]
             return Err("repl feature not built".into());
         } else {
-            return Err(format!("unknown option {arg:?}").into());
+            return Err(format!("unknown subcommand {arg:?}").into());
         }
     }
 

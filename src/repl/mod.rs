@@ -61,7 +61,7 @@ pub(crate) fn main(_args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync
                         ..
                     }) => {
                         acc.push_str(&line);
-                        acc.push_str("\n");
+                        acc.push('\n');
                     }
                     Err(parser::Error {
                         kind: parser::ErrorKind::Empty,

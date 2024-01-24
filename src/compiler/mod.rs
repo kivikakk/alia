@@ -44,13 +44,13 @@ impl Compiler {
         match &n.value {
             NodeValue::Symbol(None, s) => {
                 self.op(Op::ImmediateSymbolBare)?;
-                self.bytes(&s)?;
+                self.bytes(s)?;
                 Ok(())
             }
             NodeValue::Symbol(Some(m), s) => {
                 self.op(Op::ImmediateSymbolWithModule)?;
-                self.bytes(&m)?;
-                self.bytes(&s)?;
+                self.bytes(m)?;
+                self.bytes(s)?;
                 Ok(())
             }
             NodeValue::Integer(i) => {
@@ -65,7 +65,7 @@ impl Compiler {
             }
             NodeValue::String(s) => {
                 self.op(Op::ImmediateString)?;
-                self.bytes(&s)?;
+                self.bytes(s)?;
                 Ok(())
             }
             NodeValue::List(ns) => {

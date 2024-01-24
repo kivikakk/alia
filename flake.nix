@@ -42,6 +42,7 @@
             pkgs.rustfmt
             pkgs.lldb_16
             pkgs.re2c
+            pkgs.clippy
           ];
       });
 

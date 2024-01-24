@@ -13,7 +13,7 @@ where
     T::Err: Debug,
 {
     println!("should parse: {s}");
-    let first = s.parse::<T>().expect(&format!("input should parse: {s}"));
+    let first = s.parse::<T>().unwrap_or_else(|_| panic!("input should parse: {s}"));
     let rendered = format!("{}", first);
     let second = rendered
         .parse::<T>()
@@ -26,7 +26,7 @@ fn simples_all_parse() {
     let mut expected: Option<bool> = None;
 
     for line in include_str!("simple.lia").lines() {
-        if line == "" || line.starts_with(";") {
+        if line.is_empty() || line.starts_with(';') {
             continue;
         }
         if line == ":)" {

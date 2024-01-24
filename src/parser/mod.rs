@@ -208,21 +208,19 @@ fn parse(s: &str, mut offset: usize, mut loc: Loc) -> Result<(Node, usize, Loc),
 
 fn parse_symbol<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> {
     let s = str::from_utf8(s).expect("source should be valid utf-8");
-    if s.ends_with(".") {
+    if s.ends_with('.') {
         Err(parse_error(ErrorKind::Symbol, range))
+    } else if let Some((m, s)) = s.split_once('/') {
+        assert!(!s.contains('/'));
+        Ok(NodeValue::Symbol(Some(m.to_string()), s.to_string()))
     } else {
-        if let Some((m, s)) = s.split_once("/") {
-            assert!(!s.contains("/"));
-            Ok(NodeValue::Symbol(Some(m.to_string()), s.to_string()))
-        } else {
-            Ok(NodeValue::Symbol(None, s.to_string()))
-        }
+        Ok(NodeValue::Symbol(None, s.to_string()))
     }
 }
 
 fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> {
     let s = str::from_utf8(s).expect("source should be valid utf-8");
-    let s = s.replace("_", "");
+    let s = s.replace('_', "");
     if s.contains('.') {
         let f: f64 = s
             .parse()
@@ -232,7 +230,7 @@ fn parse_number<R: Into<Range>>(s: &[u8], range: R) -> Result<NodeValue, Error> 
         let i: i64 = if s.starts_with("0x") || s.starts_with("0X") {
             i64::from_str_radix(&s[2..], 16)
         } else {
-            i64::from_str_radix(&s, 10)
+            s.parse::<i64>()
         }
         .map_err(|_| parse_error(ErrorKind::Number, range))?;
         Ok(NodeValue::Integer(i))

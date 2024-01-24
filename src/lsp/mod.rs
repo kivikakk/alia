@@ -14,13 +14,13 @@ mod hover;
 pub(crate) fn main(args: Vec<String>) -> Result<(), Box<dyn Error + Send + Sync>> {
     eprintln!("alia lsp server starting");
 
-    if args.len() != 0 {
+    if !args.is_empty() {
         return Err("lsp doesn't take any args".into());
     }
 
     let (connection, io_threads) = Connection::stdio();
     let mut documents = TextDocuments::new();
-    let server_capabilities = serde_json::to_value(&ServerCapabilities {
+    let server_capabilities = serde_json::to_value(ServerCapabilities {
         hover_provider: Some(true.into()),
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
             TextDocumentSyncKind::INCREMENTAL,

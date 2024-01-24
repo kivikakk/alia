@@ -46,8 +46,8 @@ fn complete_from(
 ) {
     for s in source {
         let s = vm.resolve(s);
-        if s.starts_with(entry) {
-            results.push(s[entry.len()..].to_string());
+        if let Some(suffix) = s.strip_prefix(entry) {
+            results.push(suffix.to_string());
         }
     }
 }

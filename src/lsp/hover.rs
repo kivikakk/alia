@@ -37,7 +37,7 @@ pub(super) fn handle(
     .unwrap();
 
     let mut first = true;
-    while let Some(node) = nodes.next() {
+    for node in nodes {
         if first {
             writeln!(value, "## other forms under point").unwrap();
             first = false;
