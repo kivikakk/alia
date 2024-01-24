@@ -9,10 +9,10 @@ use crate::parser::{Document, Node, NodeValue};
 use crate::vm::Op;
 
 macro_rules! guard {
-    ($self:ident.$lhs:tt = $rhs:expr; { $( $stmt:stmt );* }) => {
+    ($self:ident.$lhs:tt = $rhs:expr; $body:tt) => {
         let old_lhs = $self.$lhs;
         $self.$lhs = $rhs;
-        $( $stmt )*
+        $body;
         $self.$lhs = old_lhs;
     };
 }
@@ -21,8 +21,6 @@ pub(crate) struct Compiler {
     out: Vec<u8>,
     omit_evals: bool,
 }
-
-type Result = core::result::Result<(), Error>;
 
 impl Compiler {
     pub(crate) fn new() -> Self {
@@ -36,14 +34,13 @@ impl Compiler {
         mem::take(&mut self.out)
     }
 
-    pub(crate) fn doc(&mut self, doc: &Document) -> Result {
+    pub(crate) fn doc(&mut self, doc: &Document) {
         for toplevel in &doc.toplevels {
-            self.toplevel(toplevel)?;
+            self.toplevel(toplevel);
         }
-        Ok(())
     }
 
-    fn toplevel(&mut self, n: &Node) -> Result {
+    fn toplevel(&mut self, n: &Node) {
         match n.value {
             NodeValue::Symbol(..)
             | NodeValue::Integer(_)
@@ -52,19 +49,18 @@ impl Compiler {
             | NodeValue::Vec(_) => {
                 // warn: side-effects only
                 // (and int/float/string can't even do that).
-                self.expr(n)?;
-                self.op(Op::Drop)?;
+                self.expr(n);
+                self.op(Op::Drop);
             }
             NodeValue::List(_) => {
                 // XXX for now, side-effects only
-                self.expr(n)?;
-                self.op(Op::Drop)?;
+                self.expr(n);
+                self.op(Op::Drop);
             }
         }
-        Ok(())
     }
 
-    fn expr(&mut self, n: &Node) -> Result {
+    fn expr(&mut self, n: &Node) {
         match &n.value {
             NodeValue::Symbol(None, s) => {
                 // TODO: proper compile-time resolution! not this shit!
@@ -74,78 +70,68 @@ impl Compiler {
                 } else if s == "false" {
                     self.op(Op::ImmediateBooleanFalse)
                 } else {
-                    self.op(Op::ImmediateSymbolBare)?;
-                    self.bytes(s)?;
-                    self.op(Op::Eval)?;
-                    Ok(())
+                    self.op(Op::ImmediateSymbolBare);
+                    self.bytes(s);
+                    self.op(Op::Eval);
                 }
             }
             NodeValue::Symbol(Some(m), s) => {
-                self.op(Op::ImmediateSymbolWithModule)?;
-                self.bytes(m)?;
-                self.bytes(s)?;
-                self.op(Op::Eval)?;
-                Ok(())
+                self.op(Op::ImmediateSymbolWithModule);
+                self.bytes(m);
+                self.bytes(s);
+                self.op(Op::Eval);
             }
             NodeValue::Integer(i) => {
-                self.op(Op::ImmediateInteger)?;
-                self.n(*i)?;
-                Ok(())
+                self.op(Op::ImmediateInteger);
+                self.n(*i);
             }
             NodeValue::Float(f) => {
-                self.op(Op::ImmediateFloat)?;
-                self.n(*f)?;
-                Ok(())
+                self.op(Op::ImmediateFloat);
+                self.n(*f);
             }
             NodeValue::String(s) => {
-                self.op(Op::ImmediateString)?;
-                self.bytes(s)?;
-                Ok(())
+                self.op(Op::ImmediateString);
+                self.bytes(s);
             }
             NodeValue::List(ns) => {
                 let mut ns = ns.iter();
                 let head = ns.next().expect("list should have a head");
-                self.expr(head)?; // <- resolves
-                let mut i: usize = 0;
-                guard!(self.omit_evals = true; {
+                self.expr(head); // <- resolves
+                let mut i: usize = 1;
+                guard!(self.omit_evals = true; ({
                     for n in ns {
-                        self.expr(n)?;
+                        self.expr(n);
                         i += 1;
                     }
-                });
-                self.op(Op::Call)?;
-                self.n(i)?;
-                Ok(())
+                }));
+                self.op(Op::Call);
+                self.n(i);
             }
             NodeValue::Vec(ns) => {
                 for n in ns {
-                    self.expr(n)?;
+                    self.expr(n);
                 }
-                self.op(Op::ConsVec)?;
-                self.n(ns.len())?;
-                Ok(())
+                self.op(Op::ConsVec);
+                self.n(ns.len());
             }
         }
     }
 
-    fn op(&mut self, op: Op) -> Result {
+    fn op(&mut self, op: Op) {
         match (&op, self.omit_evals) {
-            (&Op::Eval, true) => return Ok(()),
-            _ => {}
+            (&Op::Eval, true) => {}
+            (&Op::Call, true) => self.out.push(Op::ConsList as u8),
+            _ => self.out.push(op as u8),
         }
-        self.out.push(op as u8);
-        Ok(())
     }
 
-    fn n<T: ToBytes<Bytes = [u8; 8]>>(&mut self, u: T) -> Result {
+    fn n<T: ToBytes<Bytes = [u8; 8]>>(&mut self, u: T) {
         self.out.extend_from_slice(&u.to_le_bytes());
-        Ok(())
     }
 
-    fn bytes<S: AsRef<[u8]>>(&mut self, s: S) -> Result {
+    fn bytes<S: AsRef<[u8]>>(&mut self, s: S) {
         let s = s.as_ref();
-        self.n(s.len())?;
+        self.n(s.len());
         self.out.extend_from_slice(s);
-        Ok(())
     }
 }

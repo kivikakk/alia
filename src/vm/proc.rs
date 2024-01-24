@@ -89,7 +89,7 @@ impl Proc {
                 self.stack.push(result);
             }
             Op::Call => {
-                let n = self.n::<usize>();
+                let n = self.n::<usize>() - 1; // includes callee
                 let args = self.stack.split_off(self.stack.len() - n);
                 let callee = self.stack.pop().unwrap();
                 let result = self.call(vm, &callee, &args);
@@ -106,7 +106,7 @@ impl Proc {
         if self.ip < self.code.len() {
             Step::Running
         } else {
-            assert_eq!(0, self.stack.len());
+            assert_eq!(0, self.stack.len(), "stack not empty at end");
             Step::Finished
         }
     }

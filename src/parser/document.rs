@@ -12,7 +12,7 @@ pub(crate) struct Document {
 impl Document {
     pub(crate) fn compile(&self) -> Result<Vec<u8>, compiler::Error> {
         let mut c = compiler::Compiler::new();
-        c.doc(self)?;
+        c.doc(self);
         Ok(c.finish())
     }
 
